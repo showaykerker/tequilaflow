@@ -1,24 +1,31 @@
 from __future__ import absolute_import
 import numpy as np
 
+LAYER_TYPE = ['Input', 'Output', 'Dense', 'activation']
+INITIALIZER_TYPE = ['normal', 'gaussian', 'zeros']
+
 class node_:
 	def __init__(self, type_='regular'):
 		self.type = type_
 		self.initialized = False
-		self.initializer_type =  ['normal', 'gaussian', 'zeros']
 		pass
 
 	def initialize(self, n_output, initializer='normal', mean=0, std=0.1):
-		if initializer not in self.initializer_type : 
-			raise ValueError('initializer %s not recognized.'%str(initializer))
-		if initializer == 'normal' or initializer == 'gaussian':
-			self.neurons = np.random.normal(mean, std, (1, n_output))
-			self.value = 0
-		elif initializer == 'zeros':
+		self.initialized = True
+		if self.type == 'activation':
 			self.neurons = np.zeros((1, n_output))
 			self.value = 0
-		if self.type == 'bias': self.value = 1
-		self.initialized = True
+		else:
+			if initializer not in INITIALIZER_TYPE : 
+				raise ValueError('initializer %s not recognized.'%str(initializer))
+			if initializer == 'normal' or initializer == 'gaussian':
+				self.neurons = np.random.normal(mean, std, (1, n_output))
+				self.value = 0
+			elif initializer == 'zeros':
+				self.neurons = np.zeros((1, n_output))
+				self.value = 0
+			if self.type == 'bias': self.value = 1
+		
 
 
 	def get_neurons(self):
@@ -36,10 +43,6 @@ class layer:
 		self.n_nodes = n_nodes
 		self.initialized = False
 		self.n_input = n_nodes
-		self.nodes = []
-		for i in range(0, n_nodes):
-			self.nodes.append(node_())
-		self.layer_type_list = ['Input', 'Dense']
 		self.layer_type = layer_type
 
 
@@ -53,15 +56,28 @@ class layer:
 		self.initialized = True
 		self.n_output = n_output
 		
+		if self.layer_type in ['Dense', 'Input', 'Output']:
+			self.nodes = []
+			for i in range(0, n_nodes):
+				self.nodes.append(node_())
+
 		if self.layer_type in ['Dense', 'Input']:
 			self.nodes.append(node_(type_='bias'))
 			self.n_nodes = len(self.nodes) # with bias
-		
+
+			
+
 			for node in self.nodes:
 				node.initialize(n_output, initializer=initializer, mean=mean, std=std)
 				if not hasattr(self, 'matrix'): self.matrix = node.get_neurons()
 				else: self.matrix = np.append(self.matrix, node.get_neurons(), axis=0)
-		
+
+		elif self.layer_type == 'activation':
+			self.nodes = []
+			for i in range(self.n_nodes):
+				new_node = node_(type_='activation')
+				new_node.initialize(n_output=self.n_nodes)
+				self.nodes.append(new_node)
 
 	def get_layer_type(self):
 		return self.layer_type
