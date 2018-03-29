@@ -26,8 +26,6 @@ class node_:
 				self.value = 0
 			if self.type == 'bias': self.value = 1
 		
-
-
 	def get_neurons(self):
 		return self.neurons
 
@@ -39,12 +37,13 @@ class node_:
 
 
 class layer:
-	def __init__(self, n_nodes, layer_type):
+	def __init__(self, n_nodes, layer_type, inp_layer=None):
 		self.n_nodes = n_nodes
 		self.initialized = False
 		self.n_input = n_nodes
 		self.layer_type = layer_type
-
+		if layer_type != 'Input':
+			self.inp_layer_list = inp_layer.inp_layer_list.append(self)
 
 	def __str__(self):
 		if self.initialized:
@@ -58,7 +57,7 @@ class layer:
 		
 		if self.layer_type in ['Dense', 'Input', 'Output']:
 			self.nodes = []
-			for i in range(0, n_nodes):
+			for i in range(0, self.n_nodes):
 				self.nodes.append(node_())
 
 		if self.layer_type in ['Dense', 'Input']:
@@ -78,6 +77,10 @@ class layer:
 				new_node = node_(type_='activation')
 				new_node.initialize(n_output=self.n_nodes)
 				self.nodes.append(new_node)
+
+	def forward(self, vec):
+		print(vec.shape)
+
 
 	def get_layer_type(self):
 		return self.layer_type

@@ -1,3 +1,6 @@
+import numpy as np
+import copy
+
 class Model:
 	def __init__(self, inp_layer):
 		self.matrics = copy.deepcopy(inp_layer.matrics)
@@ -8,11 +11,11 @@ class Model:
 
 	def forward(self, X):
 		X_ = np.append(X, [[1]], axis=1)
-		current = X_
+		current_vec = X_
 		for i in self.matrics:
 			if (i.get_layer_type()=='activation'):
-				
+				current_vec = i.activate(current_vec)
 			else:
-				current = X_.dot(i)
+				current_vec = i.forward(current_vec)
 
-		return X_.dot(self.whole)
+		return current_vec
