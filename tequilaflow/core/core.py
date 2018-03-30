@@ -119,14 +119,10 @@ class Model:
 		for x,y in zip(X, Y):
 			err = self.forward(x) - y  # (1, n) array
 		
-			if self.loss = 'se': # sum-of-squares-error 
+			if self.loss in ['se', 'rms', 'mse']: # sum-of-squares-error, rms, mse
 				if not hasattr(self, 'tot_loss'): self.tot_loss = err**2
 				else: self.tot_loss += err**2
-		
-			elif self.loss='rms': # root mean square
-				if not hasattr(self, 'tot_loss'): self.tot_loss = err**2
-				else: self.tot_loss += err**2
-		
+
 			elif self.loss == 'cross-entropy':
 				inside_ = 0
 				for k in range(len(y)):
@@ -135,6 +131,7 @@ class Model:
 				else: self.tot_loss += inside_
 
 		if self.loss == 'rms': self.tot_loss = (self.tot_loss/batch_size)**0.5
+		elif self.loss == 'mse': self.tot_loss = (self.tot_loss/batch_size)
 		elif self.loss == 'cross-entropy': self.tot_loss = -self.tot_loss
 
 		return self.tot_loss
