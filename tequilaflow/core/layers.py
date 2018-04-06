@@ -15,8 +15,10 @@ class Input(layer):
 		self.n_output = n_output
 
 	def forward(self, X_): 
-		ret = np.append(X_, [1]).dot(self.matrix)
-		ret = np.reshape(ret, (1, len(ret)))
+		n = X_.shape[0]
+		add_ = np.array([[1]]*n)
+		ret = np.hstack((X_, add_))
+		ret = ret.dot(self.matrix)
 		return ret
 	def __str__(self): return super().__str__()
 
@@ -29,8 +31,12 @@ class Dense(layer):
 						 bias_initializer=bias_initializer, bias_mean=bias_mean, bias_std=bias_std)
 
 	def forward(self, X_):
-		ret = np.append(X_, [1]).dot(self.matrix)
-		ret = np.reshape(ret, (1, len(ret)))
+		n = X_.shape[0]
+		add_ = np.array([[1]]*n)
+		ret = np.hstack((X_, add_))
+		ret = ret.dot(self.matrix)
+
+		#ret = np.reshape(ret, (1, len(ret)))
 		return ret
 	def __str__(self): return super().__str__()
 
@@ -53,12 +59,12 @@ class Activation(layer):
 
 
 if __name__ == '__main__':
-	X = np.random.random((1, 10))
-	a = Input(n_input=10, n_output=16)
-	a = Dense(32, a)#, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.001, bias_initializer='Zeros')
-	a = Dense(64, a)
-	a = Dense(32, a)
-	a = Dense(16, a)#, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.001,bias_initializer='Zeros')
+	X = np.random.random((6, 3))
+	a = Input(n_input=3, n_output=2)
+	a = Dense(4, a)#, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.001, bias_initializer='Zeros')
+	a = Dense(2, a)
+	a = Dense(3, a)
+	a = Dense(1, a)#, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.001,bias_initializer='Zeros')
 	model = Model(a)
 	print(model)
 	print(model.forward(X))
