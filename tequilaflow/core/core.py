@@ -12,17 +12,19 @@ class node:
 		self.n_output = n_output
 		self.type = node_type
 		self.value = None
-		if type == 'Activation' :
+		if node_type == 'Activation' :
 			self.vec = np.ones((1,1))
 		else:
 			if   initializer == 'Gaus'  : self.vec = np.random.normal(mean, std, (1, n_output))
 			elif initializer == 'Zeros' : self.vec = np.zeros((1, n_output))
 			elif initializer == 'Ones'  : self.vec = np.ones((1, n_output))
 
+	# Call Before Back Propagation.
 	def init_grad(self):
 		self.grad = np.zeros(self.vec.shape)
 		self.value = 1
 
+	# Fill self.value for forward_pass
 	def forward_pass(self):
 		self.grad.fill(self.value)
 
@@ -30,7 +32,7 @@ class node:
 		return self.vec
 
 	def __str__(self):
-		return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\n' % (self.type, self.value, self.vec.shape)
+		return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\t\t%s\n' % (self.type, self.value, self.vec.shape, str(self.vec))
 
 class layer:
 	def __init__(self, n_input=None, n_output=None, last_layer=None, layer_type='Dense', 
@@ -42,7 +44,7 @@ class layer:
 		self.last_layer = copy.deepcopy(last_layer)
 		self.layer_type = layer_type
 		self.nodes=[]
-		if layer_type == 'Activation':
+		if layer_type == 'Activation': # Don't need bias node.
 			for i in range(0, self.n_nodes): 
 				nd = node(n_output, node_type=layer_type)
 				self.nodes.append(nd)
@@ -64,6 +66,7 @@ class layer:
 			self.layer_list = copy.deepcopy( last_layer.layer_list )
 			self.layer_list.append(self)
 
+	# Init node's value. Call before back propagation
 	def init_grad_table(self):
 		for node in self.nodes: node.init_grad()
 
@@ -86,18 +89,23 @@ class Model:
 		self.output_shape = (1, self.layers[-1].matrix.shape[1])
 		self.compiled = None
 
+	# Do exactly same thing as Model.forward.
 	def predict(self, x):
 		self.forward(x)
 
+	# Feed Forward
 	def forward(self, x):
 		vec = copy.deepcopy(x)
 		for layer in self.layers:
 			vec = layer.forward(vec)
 		return vec
 
+	# Initialize Grad Table. Call before Back Propagation
 	def init_grad_table(self):
 		for layer in self.layers: layer.init_grad_table()
 
+	# Calculate loss
+	# TODO: Move loss part to loss.py
 	def get_loss_vector(self, X, Y, batch_size): 
 		for x,y in zip(X, Y): 
 			err = self.forward(np.reshape(x, (1,x.shape[0]))) - y  # (1, n) array 
@@ -119,6 +127,7 @@ class Model:
 	 
 		return self.tot_loss 
 
+	# Simply make grad the value of the input node
 	def forward_pass(self, x):
 		vec_now = x
 		for layer in self.layers:
@@ -131,6 +140,7 @@ class Model:
 	def backward_pass(self):
 		pass
 
+	# Update Weights using Back Propagation
 	def update(self, X_, Y_, batch_size=0, trainig_epoch=10):
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		for epoch in range(trainig_epoch):
@@ -144,7 +154,7 @@ class Model:
 				self.forward_pass(np.reshape(X[data], (1, X[data].shape[0])))
 				self.backward_pass()
 
-
+	# Make sure witch optimizer and loss to use.
 	def compile(self, optimizer=None, loss=None, lr=0.01):
 		self.n_input = self.layers[0].n_input
 		self.n_output = self.layers[-1].n_output
@@ -167,12 +177,12 @@ if __name__ == '__main__':
 	#print('X=',X)
 	Y = np.array([[1],[2],[3]])
 	a = Input(n_input=5, n_output=3)
-	a = Dense(5, a, kernel_initializer='Gaus', kernel_mean=1, kernel_std=0.1, bias_initializer='Zeros')
+	a = Dense(5, a, kernel_initializer='Gaus', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
 	a = Relu(a)
-	a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1,bias_initializer='Zeros')
+	a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1, bias_initializer='Ones')
 	model = Model(a)
 	##print(model)
-	print('model.forward(X)=', model.forward(X))
+	print('model.forward(X)=\n', model.forward(X))
 	#print('Y=', Y)
 	model.compile(optimizer=None, loss='mse')
 	model.update(X, Y, batch_size=1)
