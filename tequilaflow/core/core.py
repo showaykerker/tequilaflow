@@ -17,10 +17,10 @@ class node:
 			if   initializer == 'Gaus'  : self.vec = np.random.normal(mean, std, (1, n_output))
 			elif initializer == 'Zeros' : self.vec = np.zeros((1, n_output))
 			elif initializer == 'Ones'  : self.vec = np.ones((1, n_output))
-		self.gradient = np.zeros(self.vec.shape)
 
 	def get_neurons(self):
 		return self.vec
+
 	def __str__(self):
 		return '\t\t<Class node> node_type=%7s, shape=%s\n' % (self.node_type, self.vec.shape)
 
@@ -60,10 +60,6 @@ class layer:
 	def forward(self):
 		raise NotImplementedError()
 
-	def init_grad_table(self):
-		for nd in self.nodes: 
-			nd.gradient = np.zeros(super().vec.shape)
-
 
 	def __str__(self, activation_type=None):
 		if activation_type == None:
@@ -91,10 +87,6 @@ class Model:
 		#print('\033[1;31m', layer, vec.shape, '\033[0m')
 		return vec
 
-	def init_grad_table(self):
-		for layer in self.layers:
-			layer.init_grad_table()
-
 	def update(self, X_, Y_, batch_size=0, trainig_epoch=10):
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		for epoch in range(trainig_epoch):
@@ -107,34 +99,6 @@ class Model:
 				self.forward_pass(X[data])
 				self.backward_pass()
 
-	def forward_pass(self):
-		for i in range(len(self.layers)):
-			if i == len(self.layers):
-				pass
-
-	def backward_pass(self):
-		pass
-
-	def get_loss_vector(self, X, Y, batch_size):
-		for x,y in zip(X, Y):
-			err = self.forward(x) - y  # (1, n) array
-		
-			if self.loss in ['se', 'rms', 'mse']: # sum-of-squares-error, rms, mse
-				if not hasattr(self, 'tot_loss'): self.tot_loss = err**2
-				else: self.tot_loss += err**2
-
-			elif self.loss == 'cross-entropy':
-				inside_ = 0
-				for k in range(len(y)):
-					inside_ += y[k] * np.log(self.forward(x))
-				if not hasattr(self, 'tot_loss'): self.tot_loss = inside_
-				else: self.tot_loss += inside_
-
-		if self.loss == 'rms': self.tot_loss = (self.tot_loss/batch_size)**0.5
-		elif self.loss == 'mse': self.tot_loss = (self.tot_loss/batch_size)
-		elif self.loss == 'cross-entropy': self.tot_loss = -self.tot_loss
-
-		return self.tot_loss
 
 	def compile(self, optimizer=None, loss=None, lr=0.01):
 		self.n_input = self.layers[0].n_input
@@ -152,12 +116,17 @@ class Model:
 
 if __name__ == '__main__':
 	from layers import *
-	X = np.array([[1,2,3]])
-	a = Input(n_input=3, n_output=5)
-	a = Dense(5, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.001, bias_initializer='Zeros')
-	a = Dense(6, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.001,bias_initializer='Zeros')
+	from activations import *
+	X = np.random.normal(0, 1.2, (3,5))
+	print('X=',X)
+	Y = np.array([[1],[2],[3]])
+	a = Input(n_input=5, n_output=3)
+	a = Dense(5, a, kernel_initializer='Gaus', kernel_mean=1, kernel_std=0.1, bias_initializer='Zeros')
+	a = Relu(a)
+	a = Dense(6, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1,bias_initializer='Zeros')
 	model = Model(a)
 	print(model)
 	print(model.forward(X))
 	model.compile()
+	#print(model.get_loss_vector(X, Y, 1))
 	
