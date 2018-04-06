@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from exhaustion import *
 import numpy as np
 import copy
+from loss import *
 
 class node: 
 	# Single node to multiple output
@@ -9,20 +10,27 @@ class node:
 	def __init__(self, n_output, node_type='regular', initializer='Gaus', mean=0, std=0.1):
 		if initializer not in INITIALIZERS: raise ValueError('Initializer %s not recognized.'%(str(initializer)))
 		self.n_output = n_output
-		self.node_type = node_type
-		self.value = 0
-		if node_type == 'Activation' :
+		self.type = node_type
+		self.value = None
+		if type == 'Activation' :
 			self.vec = np.ones((1,1))
 		else:
 			if   initializer == 'Gaus'  : self.vec = np.random.normal(mean, std, (1, n_output))
 			elif initializer == 'Zeros' : self.vec = np.zeros((1, n_output))
 			elif initializer == 'Ones'  : self.vec = np.ones((1, n_output))
 
+	def init_grad(self):
+		self.grad = np.zeros(self.vec.shape)
+		self.value = 1
+
+	def forward_pass(self):
+		self.grad.fill(self.value)
+
 	def get_neurons(self):
 		return self.vec
 
 	def __str__(self):
-		return '\t\t<Class node> node_type=%7s, shape=%s\n' % (self.node_type, self.vec.shape)
+		return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\n' % (self.type, self.value, self.vec.shape)
 
 class layer:
 	def __init__(self, n_input=None, n_output=None, last_layer=None, layer_type='Dense', 
@@ -56,6 +64,8 @@ class layer:
 			self.layer_list = copy.deepcopy( last_layer.layer_list )
 			self.layer_list.append(self)
 
+	def init_grad_table(self):
+		for node in self.nodes: node.init_grad()
 
 	def forward(self):
 		raise NotImplementedError()
@@ -82,21 +92,56 @@ class Model:
 	def forward(self, x):
 		vec = copy.deepcopy(x)
 		for layer in self.layers:
-			#print('\033[1;31m', layer, vec.shape, '\033[0m')
 			vec = layer.forward(vec)
-		#print('\033[1;31m', layer, vec.shape, '\033[0m')
 		return vec
+
+	def init_grad_table(self):
+		for layer in self.layers: layer.init_grad_table()
+
+	def get_loss_vector(self, X, Y, batch_size): 
+		for x,y in zip(X, Y): 
+			err = self.forward(np.reshape(x, (1,x.shape[0]))) - y  # (1, n) array 
+
+		if self.loss in ['se', 'rms', 'mse']: # sum-of-squares-error, rms, mse 
+			if not hasattr(self, 'tot_loss'): self.tot_loss = err**2 
+			else: self.tot_loss += err**2 
+
+		elif self.loss == 'cross-entropy': 
+			inside_ = 0 
+			for k in range(len(y)): 
+			  inside_ += y[k] * np.log(self.forward(np.reshape(x, (1, x.shape[0])) )) 
+			if not hasattr(self, 'tot_loss'): self.tot_loss = inside_ 
+			else: self.tot_loss += inside_ 
+	 
+		if self.loss == 'rms': self.tot_loss = (self.tot_loss/batch_size)**0.5 
+		elif self.loss == 'mse': self.tot_loss = (self.tot_loss/batch_size) 
+		elif self.loss == 'cross-entropy': self.tot_loss = -self.tot_loss 
+	 
+		return self.tot_loss 
+
+	def forward_pass(self, x):
+		vec_now = x
+		for layer in self.layers:
+			for v, node in zip(x[0], layer.nodes):
+				if node.type == 'regular':
+					node.value = v
+					node.forward_pass()
+			vec_now = layer.forward(vec_now)
+
+	def backward_pass(self):
+		pass
 
 	def update(self, X_, Y_, batch_size=0, trainig_epoch=10):
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		for epoch in range(trainig_epoch):
 			idx = np.random.choice(np.arange(len(X_)), batch_size, replace=False)
-			X, Y = X_[idx], Y_[idc]
+			X, Y = X_[idx], Y_[idx]
+			#input((X, Y))
 			self.init_grad_table()
 			loss_vec = self.get_loss_vector(X, Y, batch_size)
 			for data in range(batch_size):
 				# X[data], Y[data]
-				self.forward_pass(X[data])
+				self.forward_pass(np.reshape(X[data], (1, X[data].shape[0])))
 				self.backward_pass()
 
 
@@ -117,16 +162,18 @@ class Model:
 if __name__ == '__main__':
 	from layers import *
 	from activations import *
+
 	X = np.random.normal(0, 1.2, (3,5))
-	print('X=',X)
+	#print('X=',X)
 	Y = np.array([[1],[2],[3]])
 	a = Input(n_input=5, n_output=3)
 	a = Dense(5, a, kernel_initializer='Gaus', kernel_mean=1, kernel_std=0.1, bias_initializer='Zeros')
 	a = Relu(a)
-	a = Dense(6, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1,bias_initializer='Zeros')
+	a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1,bias_initializer='Zeros')
 	model = Model(a)
+	##print(model)
+	print('model.forward(X)=', model.forward(X))
+	#print('Y=', Y)
+	model.compile(optimizer=None, loss='mse')
+	model.update(X, Y, batch_size=1)
 	print(model)
-	print(model.forward(X))
-	model.compile()
-	#print(model.get_loss_vector(X, Y, 1))
-	
