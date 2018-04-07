@@ -1,3 +1,3 @@
 INITIALIZERS = [None, 'Gaus', 'Zeros', 'Ones']
-LAYERS = ['Dense', 'Input', 'Activation']
+LAYERS = ['Dense', 'Input', 'Output', 'Activation']
 BIAS_LAYERS = ['Dense', 'Input']

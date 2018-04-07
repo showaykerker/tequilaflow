@@ -12,7 +12,7 @@ class node:
 		self.n_output = n_output
 		self.type = node_type
 		self.value = None
-		if node_type == 'Activation' :
+		if node_type == 'Activation' or node_type == 'Output':
 			self.vec = np.ones((1,1))
 		else:
 			if   initializer == 'Gaus'  : self.vec = np.random.normal(mean, std, (1, n_output))
@@ -44,9 +44,10 @@ class layer:
 		self.n_output = n_output
 		self.n_input = self.n_nodes = n_input
 		self.last_layer = copy.deepcopy(last_layer)
+		self.next_layer = None
 		self.layer_type = layer_type
 		self.nodes=[]
-		if layer_type == 'Activation': # Don't need bias node.
+		if layer_type == 'Activation' or layer_type == 'Output' : # Don't need bias node.
 			for i in range(0, self.n_nodes): 
 				nd = node(n_output, node_type=layer_type)
 				self.nodes.append(nd)
@@ -74,6 +75,21 @@ class layer:
 
 	def forward(self):
 		raise NotImplementedError()
+
+	def backward(self, bpass_init=None):
+		if self.layer_type == 'Output': 
+			for node, val in zip(self.nodes, bpass_init):
+				node.value = val
+		elif self.layer_type == 'Activation': pass #raise NotImplementedError()
+		else:
+			for node in self.nodes:
+				val = 0
+				for v, n in zip(node.vec, self.next_layer.nodes):
+					val += v*n.value
+				
+
+	def link_next_layer(self, next_layer):
+		self.next_layer = next_layer
 
 
 	def __str__(self, activation_type=None):
@@ -125,8 +141,14 @@ class Model:
 				layer.diff(vec_now)
 			vec_now = layer.forward(vec_now)
 
-	def backward_pass(self, y_pred, y_true):
-		self.loss.get_pCpy(y_pred, y_true)
+	def backward_pass(self, Y_predict, Y_true, idx):
+		backward_pass_init = self.loss.get_pCpy(Y_predict, Y_true, idx)
+		self.layers[-1].backward(backward_pass_init)
+		for lay_idx in range(len(self.layers)-1):
+			lay_idx = - (lay_idx+2)
+			self.layers[lay_idx].backward()
+			
+
 
 	# Update Weights using Back Propagation
 	def update(self, X_, Y_, batch_size=0, trainig_epoch=10):
@@ -137,16 +159,21 @@ class Model:
 			#input((X, Y))
 			self.init_grad_table()
 			loss_vec = self.get_loss_vector(X, Y, batch_size)
-			for x, y in zip(X, Y):
+			for idx, (x, y) in enumerate(zip(X, Y)):
 				x = np.reshape(x, (1, x.shape[0]))
 				y = np.reshape(y, (1, y.shape[0]))
 				# X[data], Y[data]
 				self.forward_pass(x)
-				self.backward_pass(self.forward(x), y)
+				self.backward_pass(self.forward(X), Y, idx)
 
 	# Make sure witch optimizer and loss to use.
 	def compile(self, optimizer=None, loss=None, lr=0.01):
+		if self.layers[0].layer_type  != 'Input' : raise RuntimeError('First layer must be Input layer')
+		if self.layers[-1].layer_type != 'Output': raise RuntimeError('Last layer must be Output layer')
 		self.compiled = True
+		for i in range(len(self.layers)):
+			if i == len(self.layers)-1: self.layers[i].link_next_layer(None)
+			else: self.layers[i].link_next_layer(self.layers[i+1])
 		self.n_input = self.layers[0].n_input
 		self.n_output = self.layers[-1].n_output
 		self.optimizer = optimizer
@@ -164,14 +191,15 @@ if __name__ == '__main__':
 	from layers import *
 	from activations import *
 	np.random.seed(1)
-	X = np.random.normal(0, 1.2, (3,5))
+	X = np.random.normal(0, 1.2, (3,2))
 	#print('X=',X)
 	Y = np.array([[1,2,3],[2,4,6],[3,6,9]])
-	a = Input(n_input=5, n_output=3)
-	a = Dense(5, a, kernel_initializer='Gaus', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
-	a = Relu(a)
+	a = Input(n_input=2, n_output=3)
+	a = Linear(a)
+	a = Dense(2, a, kernel_initializer='Gaus', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
+	a = Linear(a)
 	a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1, bias_initializer='Ones')
-	a = Softmax(a)
+	a = Output(a)
 	model = Model(a)
 	##print(model)
 	print('model.forward(X)=\n', model.forward(X))

@@ -22,6 +22,16 @@ class Input(layer):
 		return ret
 	def __str__(self): return super().__str__()
 
+class Output(layer):
+	def __init__(self, last_layer):
+		super().__init__(n_input=last_layer.n_output, n_output=last_layer.n_output, last_layer=last_layer, layer_type='Output')
+
+	def forward(self, X_):
+		return X_
+
+	def __str__(self): return super().__str__()		
+
+
 class Dense(layer):
 	def __init__(self, n_output, last_layer, n_input=None, 
 				 kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1,
