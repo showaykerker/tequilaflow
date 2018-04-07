@@ -21,12 +21,14 @@ class node:
 
 	# Call Before Back Propagation.
 	def init_grad(self):
+		self.grad_forward = np.zeros(self.vec.shape)
+		self.grad_backward = np.zeros(self.vec.shape)
 		self.grad = np.zeros(self.vec.shape)
 		self.value = 1
 
 	# Fill self.value for forward_pass
 	def forward_pass(self):
-		self.grad.fill(self.value)
+		self.grad_forward.fill(self.value)
 
 	def get_neurons(self):
 		return self.vec
@@ -116,10 +118,13 @@ class Model:
 				if node.type == 'regular':
 					node.value = v
 					node.forward_pass()
+				elif node.type == 'bias':
+					node.value = 1
+					node.forward_pass()
 			vec_now = layer.forward(vec_now)
 
-	def backward_pass(self):
-		pass
+	def backward_pass(self, y_pred, y_true):
+		self.loss.get_pCpy(y_pred, y_true)
 
 	# Update Weights using Back Propagation
 	def update(self, X_, Y_, batch_size=0, trainig_epoch=10):
@@ -130,10 +135,12 @@ class Model:
 			#input((X, Y))
 			self.init_grad_table()
 			loss_vec = self.get_loss_vector(X, Y, batch_size)
-			for data in range(batch_size):
+			for x, y in zip(X, Y):
+				x = np.reshape(x, (1, x.shape[0]))
+				y = np.reshape(y, (1, y.shape[0]))
 				# X[data], Y[data]
-				self.forward_pass(np.reshape(X[data], (1, X[data].shape[0])))
-				self.backward_pass()
+				self.forward_pass(x)
+				self.backward_pass(self.forward(x), y)
 
 	# Make sure witch optimizer and loss to use.
 	def compile(self, optimizer=None, loss=None, lr=0.01):
@@ -154,7 +161,7 @@ class Model:
 if __name__ == '__main__':
 	from layers import *
 	from activations import *
-
+	np.random.seed(1)
 	X = np.random.normal(0, 1.2, (3,5))
 	#print('X=',X)
 	Y = np.array([[1,2,3],[2,4,6],[3,6,9]])

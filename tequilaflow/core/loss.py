@@ -11,10 +11,10 @@ class Model_loss:
 		elif loss_func == 'cross_entropy': self.loss_func = cross_entropy()
 
 	def get_vector(self, Y_predict, Y_true, batch_size=None):
-		self.loss_func.get_vector(Y_predict, Y_true, batch_size)
+		return self.loss_func.get_vector(Y_predict, Y_true, batch_size)
 
-	def get_partial(self,):
-		self.loss_func.get_partial()
+	def get_pCpy(self, y_pred, y_true):
+		return self.loss_func.get_pCpy(y_pred, y_true)
 
 	def __str__(self):
 		return '<class Model_loss> loss_func=%s' % (self.l)
@@ -29,8 +29,12 @@ class loss_function(object):
 		if Y_predict.shape != Y_true.shape : raise ValueError('Y shape mismatch. %s and %s'%(str(Y_predict.shape), str(Y_true.shape)))
 		
 
-	def get_partial(self, ):
-		raise NotImplementError('')
+	def get_pCpy(self, y_pred, y_true, get_v):
+		d = 1e-12
+		plus = get_v(y_pred + d, y_true, 1)
+		minus = get_v(y_pred - d, y_true, 1)
+		return np.expand_dims( (plus-minus)/(2*d) , axis=0 )
+		
 
 
 class root_mean_square_error(loss_function):
@@ -48,8 +52,10 @@ class root_mean_square_error(loss_function):
 			tot_loss += err ** 2
 
 		tot_loss = (tot_loss/self.batch_size)**0.5
-
 		return tot_loss
+
+	def get_pCpy(self, y_pred, y_true):
+		return super().get_pCpy(y_pred, y_true, self.get_vector)
 
 
 class mean_square_error(loss_function):
@@ -67,7 +73,11 @@ class mean_square_error(loss_function):
 			tot_loss += err ** 2
 
 		tot_loss = (tot_loss/batch_size)
-		return tot_loss		
+
+		return tot_loss
+
+	def get_pCpy(self, y_pred, y_true):
+		return np.expand_dims(y_pred-y_true, axis=0)
 
 
 class square_error(loss_function):
@@ -85,6 +95,10 @@ class square_error(loss_function):
 			tot_loss += err ** 2
 
 		return tot_loss
+
+	def get_pCpy(self, y_pred, y_true):
+		return 2*y_pred-2*y_true
+
 
 
 class cross_entropy(loss_function):
@@ -104,3 +118,6 @@ class cross_entropy(loss_function):
 				inside_ += y_t * np.log(y_p) 
 			tot_loss += inside_ 
 		return tot_loss
+
+	def get_pCpy(self, y_pred, y_true):
+		return super().get_pCpy(y_pred, y_true, self.get_vector)

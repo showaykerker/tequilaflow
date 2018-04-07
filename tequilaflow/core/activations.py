@@ -23,7 +23,9 @@ class Relu(Activation):
 		return ret		
 
 	def forward(self, X_): 
-		return self.kernel(X_)
+		self.before_ = X_
+		self.after_ = self.kernel(X_)
+		return self.after_
 
 	def __str__(self): 
 		return super().__str__('ReLU')
@@ -42,7 +44,9 @@ class Linear(Activation):
 		return ret	
 
 	def forward(self, X_): 
-		return self.kernel(X_)
+		self.before_ = X_
+		self.after_ = self.kernel(X_)
+		return self.after_
 
 	def __str__(self): 
 		return super().__str__('Linear')
@@ -65,7 +69,9 @@ class Softmax(Activation):
 		return ret	
 
 	def forward(self, X_): 
-		return self.kernel(X_)
+		self.before_ = X_
+		self.after_ = self.kernel(X_)
+		return self.after_
 
 	def __str__(self): 
 		return super().__str__('Softmax')
@@ -88,7 +94,9 @@ class Tanh(Activation):
 		return ret	
 
 	def forward(self, X_): 
-		return self.kernel(X_)
+		self.before_ = X_
+		self.after_ = self.kernel(X_)
+		return self.after_
 
 	def __str__(self): 
 		return super().__str__('tanh')
@@ -112,7 +120,9 @@ class Sigmoid(Activation):
 		return ret	
 
 	def forward(self, X_): 
-		return self.kernel(X_)
+		self.before_ = X_
+		self.after_ = self.kernel(X_)
+		return self.after_
 
 	def __str__(self): 
 		return super().__str__('Sigmoid')
@@ -135,7 +145,9 @@ class LeakyRelu(Activation):
 		return ret	
 
 	def forward(self, X_): 
-		return self.kernel(X_)
+		self.before_ = X_
+		self.after_ = self.kernel(X_)
+		return self.after_
 
 	def __str__(self): 
 		return super().__str__('LeakyReLU')
