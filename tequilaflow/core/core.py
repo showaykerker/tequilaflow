@@ -121,6 +121,8 @@ class Model:
 				elif node.type == 'bias':
 					node.value = 1
 					node.forward_pass()
+			if layer.layer_type == 'Activation':
+				layer.diff(vec_now)
 			vec_now = layer.forward(vec_now)
 
 	def backward_pass(self, y_pred, y_true):
@@ -169,6 +171,7 @@ if __name__ == '__main__':
 	a = Dense(5, a, kernel_initializer='Gaus', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
 	a = Relu(a)
 	a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1, bias_initializer='Ones')
+	a = Softmax(a)
 	model = Model(a)
 	##print(model)
 	print('model.forward(X)=\n', model.forward(X))

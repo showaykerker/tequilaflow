@@ -19,7 +19,7 @@ class Relu(Activation):
 	def diff(self,X_):
 		ret = copy.deepcopy(X_)
 		for i, v in enumerate(ret[0]):
-			ret[0][i] = 0 if x < 0 else 1
+			ret[0][i] = 0 if v < 0 else 1
 		return ret		
 
 	def forward(self, X_): 
@@ -64,9 +64,16 @@ class Softmax(Activation):
 		return X_ret
 
 	def diff(self,X_):
-		raise NotImplementedError('QQ')
 		# https://en.wikipedia.org/wiki/Activation_function
-		return ret	
+		X_ret = self.kernel(X_)[0]
+		table = np.zeros( (X_ret.shape[0], X_ret.shape[0]) )
+		for i, v1 in enumerate(X_ret):
+			for j, v2 in enumerate(X_ret):
+				if i == j: k_delta = 1
+				else: k_delta = 0
+				# {\partialf_i_{x}}/{\partialx_j}
+				table[i][j] = X_ret[i] * (k_delta-X_ret[j])
+		return table
 
 	def forward(self, X_): 
 		self.before_ = X_
