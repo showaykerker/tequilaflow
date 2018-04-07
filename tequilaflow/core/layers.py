@@ -38,6 +38,7 @@ class Dense(layer):
 
 		#ret = np.reshape(ret, (1, len(ret)))
 		return ret
+		
 	def __str__(self): return super().__str__()
 
 

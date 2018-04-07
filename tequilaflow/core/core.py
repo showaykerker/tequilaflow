@@ -78,7 +78,7 @@ class layer:
 		if activation_type == None:
 			ret = '\t<Class %s layer> n_nodes=%d, shape=%s\n' % (self.layer_type, self.n_nodes, self.matrix.shape)
 		else:
-			ret = '\t<Class %s --%s-- layer> n_nodes=%d\n' % (self.layer_type, activation_type, self.n_nodes)
+			ret = '\t<Class %s layer> ===%s=== n_nodes=%d\n' % (self.layer_type, activation_type, self.n_nodes)
 		for i in self.nodes: ret += i.__str__()
 		return ret
 
@@ -105,27 +105,8 @@ class Model:
 		for layer in self.layers: layer.init_grad_table()
 
 	# Calculate loss
-	# TODO: Move loss part to loss.py
 	def get_loss_vector(self, X, Y, batch_size): 
-		for x,y in zip(X, Y): 
-			err = self.forward(np.reshape(x, (1,x.shape[0]))) - y  # (1, n) array 
-
-		if self.loss in ['se', 'rms', 'mse']: # sum-of-squares-error, rms, mse 
-			if not hasattr(self, 'tot_loss'): self.tot_loss = err**2 
-			else: self.tot_loss += err**2 
-
-		elif self.loss == 'cross-entropy': 
-			inside_ = 0 
-			for k in range(len(y)): 
-			  inside_ += y[k] * np.log(self.forward(np.reshape(x, (1, x.shape[0])) )) 
-			if not hasattr(self, 'tot_loss'): self.tot_loss = inside_ 
-			else: self.tot_loss += inside_ 
-	 
-		if self.loss == 'rms': self.tot_loss = (self.tot_loss/batch_size)**0.5 
-		elif self.loss == 'mse': self.tot_loss = (self.tot_loss/batch_size) 
-		elif self.loss == 'cross-entropy': self.tot_loss = -self.tot_loss 
-	 
-		return self.tot_loss 
+		self.loss.get_vector(self.forward(X), Y, batch_size)
 
 	# Simply make grad the value of the input node
 	def forward_pass(self, x):
@@ -156,12 +137,13 @@ class Model:
 
 	# Make sure witch optimizer and loss to use.
 	def compile(self, optimizer=None, loss=None, lr=0.01):
+		self.compiled = True
 		self.n_input = self.layers[0].n_input
 		self.n_output = self.layers[-1].n_output
 		self.optimizer = optimizer
 		self.lr = lr
-		self.loss = loss
-		self.compiled = True
+		self.loss = Model_loss(loss_func=loss)
+		
 
 	def __str__(self):
 		ret = '<Class Model> Input Shape = %s, Output Shape = %s\n' % (self.input_shape, self.output_shape)
@@ -175,7 +157,7 @@ if __name__ == '__main__':
 
 	X = np.random.normal(0, 1.2, (3,5))
 	#print('X=',X)
-	Y = np.array([[1],[2],[3]])
+	Y = np.array([[1,2,3],[2,4,6],[3,6,9]])
 	a = Input(n_input=5, n_output=3)
 	a = Dense(5, a, kernel_initializer='Gaus', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
 	a = Relu(a)
@@ -184,6 +166,6 @@ if __name__ == '__main__':
 	##print(model)
 	print('model.forward(X)=\n', model.forward(X))
 	#print('Y=', Y)
-	model.compile(optimizer=None, loss='mse')
+	model.compile(optimizer=None, loss='cross_entropy')
 	model.update(X, Y, batch_size=1)
 	print(model)
