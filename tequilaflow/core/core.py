@@ -3,6 +3,7 @@ from exhaustion import *
 import numpy as np
 import copy
 from loss import *
+from optimizers import *
 
 class node: 
 	# Single node to multiple output
@@ -21,20 +22,16 @@ class node:
 
 	# Call Before Back Propagation.
 	def init_grad(self):
-		self.grad_forward = np.zeros(self.vec.shape)
-		self.grad_backward = np.zeros(self.vec.shape)
 		self.grad = np.zeros(self.vec.shape)
+		self.final_grad = np.zeros(self.vec.shape)
 		self.value = 1
 
-	# Fill self.value for forward_pass
-	def forward_pass(self):
-		self.grad_forward.fill(self.value)
 
 	def get_neurons(self):
 		return self.vec
 
 	def __str__(self):
-		return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\t\t%s\n' % (self.type, self.value, self.vec.shape, str(self.vec))
+		return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\t%s\t%s\n' % (self.type, self.value, self.vec.shape, str(self.vec), str(self.final_grad))
 
 class layer:
 	def __init__(self, n_input=None, n_output=None, last_layer=None, layer_type='Dense', 
@@ -79,14 +76,20 @@ class layer:
 	def backward(self, bpass_init=None):
 		if self.layer_type == 'Output': 
 			for node, val in zip(self.nodes, bpass_init):
-				node.value = val
-		elif self.layer_type == 'Activation': pass #raise NotImplementedError()
-		else:
+				node.grad[0][0] = val
+		elif self.layer_type == 'Activation': 
+			for i, node in enumerate(self.nodes):
+				sum_ = self.next_layer.nodes[i].grad.sum()
+				#print('sum_=', sum_)
+				#input('node.grad = %s'%str(node.grad))
+				node.grad[0][0] = sum_				
+		elif self.layer_type == 'Dense':
 			for node in self.nodes:
-				val = 0
-				for v, n in zip(node.vec, self.next_layer.nodes):
-					val += v*n.value
-				
+				for i, next_node in enumerate(self.next_layer.nodes):
+					# scalar          scalar               scalar         scalar
+					#                 diff of activation,  forward pass,  backward pass
+					node.grad[0][i] = next_node.value *    node.value *   next_node.grad[0][0]
+
 
 	def link_next_layer(self, next_layer):
 		self.next_layer = next_layer
@@ -126,45 +129,79 @@ class Model:
 	def get_loss_vector(self, X, Y, batch_size): 
 		self.loss.get_vector(self.forward(X), Y, batch_size)
 
-	# Simply make grad the value of the input node
+	# Fill value in nodes.
 	def forward_pass(self, x):
 		vec_now = x
 		for layer in self.layers:
+			if layer.layer_type == 'Activation':
+				#layer.node.value = layer.diff(vec_now)
+				vec = layer.diff(vec_now)
+				for i, node in enumerate(layer.nodes):
+					node.value = vec[0][i]
 			for v, node in zip(x[0], layer.nodes):
 				if node.type == 'regular':
 					node.value = v
-					node.forward_pass()
 				elif node.type == 'bias':
 					node.value = 1
-					node.forward_pass()
-			if layer.layer_type == 'Activation':
-				layer.diff(vec_now)
+			#input(layer)
+			#if layer.layer_type=='Output':
+			#	print('-'*20)
 			vec_now = layer.forward(vec_now)
 
-	def backward_pass(self, Y_predict, Y_true, idx):
-		backward_pass_init = self.loss.get_pCpy(Y_predict, Y_true, idx)
+	def update_grad(self, i):
+		if i == 0:
+			for layer in self.layers:
+				for node in layer.nodes:
+					node.final_grad = node.grad
+		else:
+			for layer in self.layers:
+				for node in layer.nodes:
+					print('--- Before ---')
+					print(node)
+					node.final_grad = ( (1/(idx+1))*node.grad + ((idx)/(idx+1))*node.final_grad )
+					print('--- After ---')
+					print(node)
+
+	def backward_pass(self, Y_predict, Y_true, i):
+		backward_pass_init = self.loss.get_pCpy(Y_predict, Y_true, i)
 		self.layers[-1].backward(backward_pass_init)
 		for lay_idx in range(len(self.layers)-1):
 			lay_idx = - (lay_idx+2)
 			self.layers[lay_idx].backward()
-			
+		self.update_grad(i)
+
+
+	def apply_final_grad(self):
+		for layer in self.layers:
+			if layer.layer_type in ['Activation','Output']: break
+			for node in layer.nodes:
+				node.vec -= 0.01 * node.grad
+				#node.vec = self.optimizer.optimize(node.vec, node.grad)
 
 
 	# Update Weights using Back Propagation
-	def update(self, X_, Y_, batch_size=0, trainig_epoch=10):
+	def update(self, X_, Y_, batch_size=2, trainig_epoch=10):
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		for epoch in range(trainig_epoch):
 			idx = np.random.choice(np.arange(len(X_)), batch_size, replace=False)
 			X, Y = X_[idx], Y_[idx]
-			#input((X, Y))
+			print('idx=', idx)
 			self.init_grad_table()
 			loss_vec = self.get_loss_vector(X, Y, batch_size)
-			for idx, (x, y) in enumerate(zip(X, Y)):
+			input((X,Y))
+			for i, (x, y) in enumerate(zip(X, Y)):
 				x = np.reshape(x, (1, x.shape[0]))
 				y = np.reshape(y, (1, y.shape[0]))
+				input((x, y))
 				# X[data], Y[data]
 				self.forward_pass(x)
-				self.backward_pass(self.forward(X), Y, idx)
+				self.backward_pass(self.forward(X), Y, i)
+			#print('-'*10, 'Before', '-'*10)
+			#print(self)
+			self.apply_final_grad()
+			#print('-'*10, 'After', '-'*10)
+			#print(self)
+			#print('\n')
 
 	# Make sure witch optimizer and loss to use.
 	def compile(self, optimizer=None, loss=None, lr=0.01):
@@ -176,7 +213,7 @@ class Model:
 			else: self.layers[i].link_next_layer(self.layers[i+1])
 		self.n_input = self.layers[0].n_input
 		self.n_output = self.layers[-1].n_output
-		self.optimizer = optimizer
+		self.optimizer = Model_optimizer(type=optimizer, lr=lr)
 		self.lr = lr
 		self.loss = Model_loss(loss_func=loss)
 		
@@ -204,6 +241,6 @@ if __name__ == '__main__':
 	##print(model)
 	print('model.forward(X)=\n', model.forward(X))
 	#print('Y=', Y)
-	model.compile(optimizer=None, loss='cross_entropy')
-	model.update(X, Y, batch_size=1)
+	model.compile(optimizer='SGD', loss='cross_entropy')
+	model.update(X, Y, batch_size=2)
 	print(model)

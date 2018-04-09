@@ -2,7 +2,7 @@ from __future__ import absolute_import
 import numpy as np
 
 
-class Model_loss:
+class Model_loss: # wrapper
 	def __init__(self, loss_func='rms'):
 		self.l = loss_func
 		if   loss_func == 'rms': self.loss_func = root_mean_square_error()
@@ -20,7 +20,7 @@ class Model_loss:
 		return '<class Model_loss> loss_func=%s' % (self.l)
 
 
-class loss_function(object):
+class loss_function(object): # for inherit
 	def __init__(self, ):
 		self.partial_output = None
 		self.batch_size = None
@@ -119,4 +119,5 @@ class cross_entropy(loss_function):
 		return tot_loss
 
 	def get_pCpy(self, Y_predict, Y_true, idx=None):
+		input(super().get_pCpy(Y_predict, Y_true, self.get_vector))
 		return super().get_pCpy(Y_predict, Y_true, self.get_vector)[idx]
