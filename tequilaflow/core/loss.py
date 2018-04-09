@@ -119,5 +119,6 @@ class cross_entropy(loss_function):
 		return tot_loss
 
 	def get_pCpy(self, Y_predict, Y_true, idx=None):
+		raise NotImplementedError('')
 		input(super().get_pCpy(Y_predict, Y_true, self.get_vector))
 		return super().get_pCpy(Y_predict, Y_true, self.get_vector)[idx]

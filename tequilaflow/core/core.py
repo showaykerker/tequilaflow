@@ -44,7 +44,7 @@ class layer:
 		if layer_type not in LAYERS: raise ValueError('Layer type %s not recognized.' % ( str(type_) ))
 		self.n_output = n_output
 		self.n_input = self.n_nodes = n_input
-		self.last_layer = copy.deepcopy(last_layer)
+		self.last_layer = last_layer
 		self.next_layer = None
 		self.layer_type = layer_type
 		self.nodes=[]
@@ -67,28 +67,34 @@ class layer:
 				self.matrix = np.append(self.matrix, nd.get_neurons(), axis=0)
 		if last_layer == None and layer_type=='Input' : self.layer_list = [self] # Input layer
 		else: 
-			self.layer_list = copy.deepcopy( last_layer.layer_list )
+			self.layer_list = last_layer.layer_list 
 			self.layer_list.append(self)
 
 	# Init node's value. Call before back propagation
 	def init_grad_table(self):
 		for node in self.nodes: node.init_grad()
 
+	def update_matrix(self):
+		if self.layer_type == 'Activation' or self.layer_type == 'Output' : # Don't need bias node.
+			pass
+		else:
+			delattr(self, 'matrix')
+			for nd in self.nodes: 
+				if not hasattr(self, 'matrix'): self.matrix = nd.get_neurons()
+				else: self.matrix = np.append(self.matrix, nd.get_neurons(), axis=0)
+
+
 	def forward(self):
 		raise NotImplementedError()
 
 	def backward(self, bpass_init=None):
-		print('='*30)
-		print(self)
 		if self.layer_type == 'Output': 
-			print('\t\tbpass_init=', bpass_init)
+			#print('\t\tbpass_init=', bpass_init)
 			for node, val in zip(self.nodes, bpass_init):
 				node.grad.fill(val)
 		elif self.layer_type == 'Activation': 
 			for i, node in enumerate(self.nodes):
 				sum_ = self.next_layer.nodes[i].grad.sum()
-				#print('sum_=', sum_)
-				#input('node.grad = %s'%str(node.grad))
 				node.grad.fill(sum_)
 		elif self.layer_type in ['Dense', 'Input']:
 			for node in self.nodes:
@@ -96,7 +102,7 @@ class layer:
 					# scalar          scalar               scalar         scalar
 					#                 diff of activation,  forward pass,  backward pass
 					node.grad[0][i] = next_node.value *    node.value *   next_node.grad[0][0]
-		input(self)
+
 
 
 	def link_next_layer(self, next_layer):
@@ -128,6 +134,7 @@ class Model:
 		vec = copy.deepcopy(x)
 		for layer in self.layers:
 			vec = copy.deepcopy(layer.forward(vec))
+
 		return vec
 
 	# Initialize Grad Table. Call before Back Propagation
@@ -164,9 +171,8 @@ class Model:
 		else:
 			for layer in self.layers:
 				for node in layer.nodes:
-					print(node)
 					node.final_grad = ( (1/(i+1))*node.grad + ((i)/(i+1))*node.final_grad )
-					input(node)
+
 
 	def backward_pass(self, Y_predict, Y_true, i):
 		backward_pass_init = copy.deepcopy(self.loss.get_pCpy(Y_predict, Y_true, i))
@@ -178,33 +184,30 @@ class Model:
 
 
 	def apply_final_grad(self):
-		print(self.layers)
 		for layer in self.layers:
-			print(layer)
 			if layer.layer_type in ['Activation','Output']: continue
 			for node in layer.nodes:
-				print('== node.vec ===')
-				print(node)
-				node.vec -= 0.01 * node.final_grad
-				#node.vec = self.optimizer.optimize(node.vec, node.grad)
-				print(node)
-				print('====')
+				node.vec = self.optimizer.optimize(node.vec, node.grad)
+			#print('b4 update_matrix')
+			#input(layer)
+			layer.update_matrix()
+
 
 	# Update Weights using Back Propagation
-	def update(self, X_, Y_, batch_size=2, trainig_epoch=10):
+	def update(self, X_, Y_, batch_size=32, trainig_epoch=80):
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		for epoch in range(trainig_epoch):
 			idx = np.random.choice(np.arange(len(X_)), batch_size, replace=False)
-			X, Y = copy.deepcopy(X_[idx]), copy.deepcopy(Y_[idx])
+			X, Y = X_[idx], Y_[idx]
 			self.init_grad_table()
-			loss_vec = copy.deepcopy(self.get_loss_vector(X, Y, batch_size))
+			loss_vec = self.get_loss_vector(X, Y, batch_size)
 
 			for i, (x, y) in enumerate(zip(X, Y)):
 				x = np.reshape(x, (1, x.shape[0]))
 				y = np.reshape(y, (1, y.shape[0]))
 				# X[data], Y[data]
 				self.forward_pass(x)
-				self.backward_pass(copy.deepcopy(self.forward(X)), Y, i)
+				self.backward_pass(self.forward(X), Y, i)
 
 			self.apply_final_grad()
 
@@ -234,19 +237,27 @@ if __name__ == '__main__':
 	from layers import *
 	from activations import *
 	np.random.seed(1)
-	X = np.random.normal(0, 1.2, (3,2))
-	#print('X=',X)
-	Y = np.array([[1,2,3],[2,4,6],[3,6,9]])
-	a = Input(n_input=2, n_output=3 , kernel_initializer='Ones', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
+	X = np.random.normal(0, 0.2, (20,2))
+	print('X=',X)
+	Y = copy.deepcopy(X)
+	Y.fill(18.231)
+	a = Input(n_input=2, n_output=16 , kernel_initializer='Zeros', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
+	a = Tanh(a)
+	
+	a = Dense(16, a, kernel_initializer='Zeros', kernel_mean=1, kernel_std=0.1, bias_initializer='Zeros')
+	a = Tanh(a)
+	a = Dense(8, a, kernel_initializer='Zeros', kernel_mean=1, kernel_std=0.1, bias_initializer='Zeros')
 	a = Linear(a)
-	a = Dense(3, a, kernel_initializer='Ones', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
+	a = Dense(2, a, kernel_initializer='Zeros', kernel_mean=1, kernel_std=0.1, bias_initializer='Zeros')
 	#a = Linear(a)
 	#a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1, bias_initializer='Ones')
 	a = Output(a)
 	model = Model(a)
-	##print(model)
+	#print(X)
+	#print(model)
 	print('model.forward(X)=\n', model.forward(X))
 	#print('Y=', Y)
 	model.compile(optimizer='SGD', loss='se')
-	model.update(X, Y, batch_size=2)
-	print(model)
+	model.update(X, Y, batch_size=16, trainig_epoch=40)
+	#print(model)
+	print('model.forward(X)=\n', model.forward(X))

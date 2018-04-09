@@ -15,10 +15,12 @@ class Input(layer):
 		self.n_output = n_output
 
 	def forward(self, X_): 
+		#print(self.matrix)
 		n = X_.shape[0]
 		add_ = np.array([[1]]*n)
 		ret = np.hstack((X_, add_))
 		ret = ret.dot(self.matrix)
+
 		return ret
 	def __str__(self): return super().__str__()
 
@@ -41,11 +43,12 @@ class Dense(layer):
 						 bias_initializer=bias_initializer, bias_mean=bias_mean, bias_std=bias_std)
 
 	def forward(self, X_):
+		
 		n = X_.shape[0]
 		add_ = np.array([[1]]*n)
 		ret = np.hstack((X_, add_))
 		ret = ret.dot(self.matrix)
-
+		#print(self.matrix)
 		#ret = np.reshape(ret, (1, len(ret)))
 		return ret
 		

@@ -39,5 +39,3 @@ class SGD(optimizer):
 if __name__ == '__main__':
 	opt = Model_optimizer(type='SGD', lr=0.01, showay='cool')
 	print(opt)
-else:
-	print(__name__)
