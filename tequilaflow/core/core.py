@@ -19,6 +19,10 @@ class node:
 			if   initializer == 'Gaus'  : self.vec = np.random.normal(mean, std, (1, n_output))
 			elif initializer == 'Zeros' : self.vec = np.zeros((1, n_output))
 			elif initializer == 'Ones'  : self.vec = np.ones((1, n_output))
+		
+		self.grad = np.zeros(self.vec.shape)
+		self.final_grad = np.zeros(self.vec.shape)
+		self.value=0.
 
 	# Call Before Back Propagation.
 	def init_grad(self):
@@ -31,7 +35,7 @@ class node:
 		return self.vec
 
 	def __str__(self):
-		return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\t%s\t%s\n' % (self.type, self.value, self.vec.shape, str(self.vec), str(self.final_grad))
+		return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\t%s\t%s\t%s\n' % (self.type, self.value, self.vec.shape, str(self.vec), str(self.grad), str(self.final_grad))
 
 class layer:
 	def __init__(self, n_input=None, n_output=None, last_layer=None, layer_type='Dense', 
@@ -74,25 +78,30 @@ class layer:
 		raise NotImplementedError()
 
 	def backward(self, bpass_init=None):
+		print('='*30)
+		print(self)
 		if self.layer_type == 'Output': 
+			print('\t\tbpass_init=', bpass_init)
 			for node, val in zip(self.nodes, bpass_init):
-				node.grad[0][0] = val
+				node.grad.fill(val)
 		elif self.layer_type == 'Activation': 
 			for i, node in enumerate(self.nodes):
 				sum_ = self.next_layer.nodes[i].grad.sum()
 				#print('sum_=', sum_)
 				#input('node.grad = %s'%str(node.grad))
-				node.grad[0][0] = sum_				
-		elif self.layer_type == 'Dense':
+				node.grad.fill(sum_)
+		elif self.layer_type in ['Dense', 'Input']:
 			for node in self.nodes:
 				for i, next_node in enumerate(self.next_layer.nodes):
 					# scalar          scalar               scalar         scalar
 					#                 diff of activation,  forward pass,  backward pass
 					node.grad[0][i] = next_node.value *    node.value *   next_node.grad[0][0]
+		input(self)
 
 
 	def link_next_layer(self, next_layer):
 		self.next_layer = next_layer
+
 
 
 	def __str__(self, activation_type=None):
@@ -105,7 +114,7 @@ class layer:
 
 class Model:
 	def __init__(self, input_layers):
-		self.layers = copy.deepcopy(input_layers.layer_list)
+		self.layers = input_layers.layer_list
 		self.input_shape = (1, self.layers[0].matrix.shape[0]-1)
 		self.output_shape = (1, self.layers[-1].matrix.shape[1])
 		self.compiled = None
@@ -118,7 +127,7 @@ class Model:
 	def forward(self, x):
 		vec = copy.deepcopy(x)
 		for layer in self.layers:
-			vec = layer.forward(vec)
+			vec = copy.deepcopy(layer.forward(vec))
 		return vec
 
 	# Initialize Grad Table. Call before Back Propagation
@@ -131,11 +140,11 @@ class Model:
 
 	# Fill value in nodes.
 	def forward_pass(self, x):
-		vec_now = x
+		vec_now = copy.deepcopy(x)
 		for layer in self.layers:
 			if layer.layer_type == 'Activation':
 				#layer.node.value = layer.diff(vec_now)
-				vec = layer.diff(vec_now)
+				vec = copy.deepcopy(layer.diff(vec_now))
 				for i, node in enumerate(layer.nodes):
 					node.value = vec[0][i]
 			for v, node in zip(x[0], layer.nodes):
@@ -143,7 +152,6 @@ class Model:
 					node.value = v
 				elif node.type == 'bias':
 					node.value = 1
-			#input(layer)
 			#if layer.layer_type=='Output':
 			#	print('-'*20)
 			vec_now = layer.forward(vec_now)
@@ -152,18 +160,16 @@ class Model:
 		if i == 0:
 			for layer in self.layers:
 				for node in layer.nodes:
-					node.final_grad = node.grad
+					node.final_grad = copy.deepcopy(node.grad)
 		else:
 			for layer in self.layers:
 				for node in layer.nodes:
-					print('--- Before ---')
 					print(node)
-					node.final_grad = ( (1/(idx+1))*node.grad + ((idx)/(idx+1))*node.final_grad )
-					print('--- After ---')
-					print(node)
+					node.final_grad = ( (1/(i+1))*node.grad + ((i)/(i+1))*node.final_grad )
+					input(node)
 
 	def backward_pass(self, Y_predict, Y_true, i):
-		backward_pass_init = self.loss.get_pCpy(Y_predict, Y_true, i)
+		backward_pass_init = copy.deepcopy(self.loss.get_pCpy(Y_predict, Y_true, i))
 		self.layers[-1].backward(backward_pass_init)
 		for lay_idx in range(len(self.layers)-1):
 			lay_idx = - (lay_idx+2)
@@ -172,36 +178,36 @@ class Model:
 
 
 	def apply_final_grad(self):
+		print(self.layers)
 		for layer in self.layers:
-			if layer.layer_type in ['Activation','Output']: break
+			print(layer)
+			if layer.layer_type in ['Activation','Output']: continue
 			for node in layer.nodes:
-				node.vec -= 0.01 * node.grad
+				print('== node.vec ===')
+				print(node)
+				node.vec -= 0.01 * node.final_grad
 				#node.vec = self.optimizer.optimize(node.vec, node.grad)
-
+				print(node)
+				print('====')
 
 	# Update Weights using Back Propagation
 	def update(self, X_, Y_, batch_size=2, trainig_epoch=10):
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		for epoch in range(trainig_epoch):
 			idx = np.random.choice(np.arange(len(X_)), batch_size, replace=False)
-			X, Y = X_[idx], Y_[idx]
-			print('idx=', idx)
+			X, Y = copy.deepcopy(X_[idx]), copy.deepcopy(Y_[idx])
 			self.init_grad_table()
-			loss_vec = self.get_loss_vector(X, Y, batch_size)
-			input((X,Y))
+			loss_vec = copy.deepcopy(self.get_loss_vector(X, Y, batch_size))
+
 			for i, (x, y) in enumerate(zip(X, Y)):
 				x = np.reshape(x, (1, x.shape[0]))
 				y = np.reshape(y, (1, y.shape[0]))
-				input((x, y))
 				# X[data], Y[data]
 				self.forward_pass(x)
-				self.backward_pass(self.forward(X), Y, i)
-			#print('-'*10, 'Before', '-'*10)
-			#print(self)
+				self.backward_pass(copy.deepcopy(self.forward(X)), Y, i)
+
 			self.apply_final_grad()
-			#print('-'*10, 'After', '-'*10)
-			#print(self)
-			#print('\n')
+
 
 	# Make sure witch optimizer and loss to use.
 	def compile(self, optimizer=None, loss=None, lr=0.01):
@@ -231,16 +237,16 @@ if __name__ == '__main__':
 	X = np.random.normal(0, 1.2, (3,2))
 	#print('X=',X)
 	Y = np.array([[1,2,3],[2,4,6],[3,6,9]])
-	a = Input(n_input=2, n_output=3)
+	a = Input(n_input=2, n_output=3 , kernel_initializer='Ones', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
 	a = Linear(a)
-	a = Dense(2, a, kernel_initializer='Gaus', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
-	a = Linear(a)
-	a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1, bias_initializer='Ones')
+	a = Dense(3, a, kernel_initializer='Ones', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
+	#a = Linear(a)
+	#a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1, bias_initializer='Ones')
 	a = Output(a)
 	model = Model(a)
 	##print(model)
 	print('model.forward(X)=\n', model.forward(X))
 	#print('Y=', Y)
-	model.compile(optimizer='SGD', loss='cross_entropy')
+	model.compile(optimizer='SGD', loss='se')
 	model.update(X, Y, batch_size=2)
 	print(model)
