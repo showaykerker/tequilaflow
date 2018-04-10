@@ -90,7 +90,7 @@ class layer:
 	def backward(self, bpass_init=None):
 		if self.layer_type == 'Output': 
 			#print('\t\tbpass_init=', bpass_init)
-			for node, val in zip(self.nodes, bpass_init):
+			for node, val in zip(self.nodes, bpass_init.flatten()):
 				node.grad.fill(val)
 		elif self.layer_type == 'Activation': 
 			for i, node in enumerate(self.nodes):
@@ -143,7 +143,7 @@ class Model:
 
 	# Calculate loss
 	def get_loss_vector(self, X, Y, batch_size): 
-		self.loss.get_vector(self.forward(X), Y, batch_size)
+		return self.loss.get_vector(self.forward(X), Y, batch_size)
 
 	# Fill value in nodes.
 	def forward_pass(self, x):
@@ -175,7 +175,8 @@ class Model:
 
 
 	def backward_pass(self, Y_predict, Y_true, i):
-		backward_pass_init = copy.deepcopy(self.loss.get_pCpy(Y_predict, Y_true, i))
+		backward_pass_init = self.loss.get_pCpy(Y_predict, Y_true, i)
+		#input(backward_pass_init)
 		self.layers[-1].backward(backward_pass_init)
 		for lay_idx in range(len(self.layers)-1):
 			lay_idx = - (lay_idx+2)
@@ -194,13 +195,13 @@ class Model:
 
 
 	# Update Weights using Back Propagation
-	def update(self, X_, Y_, batch_size=32, trainig_epoch=80):
+	def update(self, X_, Y_, batch_size=4, trainig_epoch=80, X_val=None, Y_val=None, validate_every_n_epoch=None):
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
+		self.loss.set_batch_size(batch_size)
 		for epoch in range(trainig_epoch):
 			idx = np.random.choice(np.arange(len(X_)), batch_size, replace=False)
 			X, Y = X_[idx], Y_[idx]
 			self.init_grad_table()
-			loss_vec = self.get_loss_vector(X, Y, batch_size)
 
 			for i, (x, y) in enumerate(zip(X, Y)):
 				x = np.reshape(x, (1, x.shape[0]))
@@ -211,6 +212,20 @@ class Model:
 
 			self.apply_final_grad()
 
+			if validate_every_n_epoch is not None and \
+			X_val is not None and Y_val is not None and \
+			(epoch+1)%validate_every_n_epoch == 0:
+				acc = self.validation(X_val, Y_val)
+				print('  Epoch #%d, acc=%9.6f'%(epoch+1, acc))
+
+
+	def validation(self, X_, Y_):
+		if not self.compiled: raise RuntimeError('Model Not Compiled.')
+		Y_pred = self.forward(X_)
+		acc_tmp = 1 - abs((Y_pred-Y_))/abs(Y_)
+		acc = acc_tmp.mean()
+		return acc
+			
 
 	# Make sure witch optimizer and loss to use.
 	def compile(self, optimizer=None, loss=None, lr=0.01):
@@ -237,27 +252,37 @@ if __name__ == '__main__':
 	from layers import *
 	from activations import *
 	np.random.seed(1)
-	X = np.random.normal(0, 0.2, (20,2))
-	print('X=',X)
+	X = np.random.normal(0, 0.1, (40,8))
+	#print('X=',X)
 	Y = copy.deepcopy(X)
-	Y.fill(18.231)
-	a = Input(n_input=2, n_output=16 , kernel_initializer='Zeros', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
+	#Y.fill(18.231)
+	Y = np.zeros((40, 3))
+	Y.fill(0.192)
+	a = Input(n_input=8, n_output=16 , kernel_initializer='Zeros', kernel_mean=1, kernel_std=0.1, bias_initializer='Ones')
 	a = Tanh(a)
-	
-	a = Dense(16, a, kernel_initializer='Zeros', kernel_mean=1, kernel_std=0.1, bias_initializer='Zeros')
+	a = Dense(16, a, kernel_initializer='Zeros', kernel_mean=0, kernel_std=0.1, bias_initializer='Zeros')
 	a = Tanh(a)
-	a = Dense(8, a, kernel_initializer='Zeros', kernel_mean=1, kernel_std=0.1, bias_initializer='Zeros')
+	a = Dense(16, a, kernel_initializer='Zeros', kernel_mean=0, kernel_std=0.1, bias_initializer='Zeros')
 	a = Linear(a)
-	a = Dense(2, a, kernel_initializer='Zeros', kernel_mean=1, kernel_std=0.1, bias_initializer='Zeros')
+	a = Dense(4, a, kernel_initializer='Zeros', kernel_mean=0, kernel_std=0.1, bias_initializer='Zeros')
+	a = Linear(a)
+	a = Dense(4, a, kernel_initializer='Zeros', kernel_mean=0, kernel_std=0.1, bias_initializer='Zeros')
+	a = Linear(a)
+	a = Dense(4, a, kernel_initializer='Zeros', kernel_mean=1, kernel_std=0.1, bias_initializer='Zeros')
+	a = Linear(a)
+	a = Dense(3, a, kernel_initializer='Zeros', kernel_mean=1, kernel_std=0.1, bias_initializer='Zeros')
 	#a = Linear(a)
 	#a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1, bias_initializer='Ones')
 	a = Output(a)
 	model = Model(a)
 	#print(X)
 	#print(model)
-	print('model.forward(X)=\n', model.forward(X))
+	#print('model.forward(X)=\n', model.forward(X))
 	#print('Y=', Y)
 	model.compile(optimizer='SGD', loss='se')
-	model.update(X, Y, batch_size=16, trainig_epoch=40)
+	#print(model.validation(X, Y))
+	model.update(X, Y, batch_size=4, trainig_epoch=480, X_val=X, Y_val=Y, validate_every_n_epoch=5)
+	print('='*50)
+	#print(model.validation(X, Y))
 	#print(model)
-	print('model.forward(X)=\n', model.forward(X))
+	#print('model.forward(X)=\n', model.forward(X))
