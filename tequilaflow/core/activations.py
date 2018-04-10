@@ -148,7 +148,7 @@ class LeakyRelu(Activation):
 	def diff(self,X_):
 		ret = copy.deepcopy(X_)
 		for i, v in enumerate(ret[0]):
-			ret[0][i] = 0.01 if x < 0 else 1
+			ret[0][i] = 0.01 if v < 0 else 1
 		return ret	
 
 	def forward(self, X_): 
