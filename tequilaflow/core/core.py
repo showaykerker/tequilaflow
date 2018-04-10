@@ -5,6 +5,8 @@ import copy
 from loss import *
 from optimizers import *
 
+CLIP_GRAD = 0.04
+
 class node: 
 	# Single node to multiple output
 	# type_ : ['regular', 'bias', 'activation']
@@ -176,11 +178,11 @@ class Model:
 		if i == 0:
 			for layer in self.layers:
 				for node in layer.nodes:
-					node.final_grad = copy.deepcopy(node.grad)
+					node.final_grad = np.clip(copy.deepcopy(node.grad), -CLIP_GRAD, CLIP_GRAD)
 		else:
 			for layer in self.layers:
 				for node in layer.nodes:
-					node.final_grad = ( (1/(i+1))*node.grad + ((i)/(i+1))*node.final_grad )
+					node.final_grad = np.clip(( (1/(i+1))*node.grad + ((i)/(i+1))*node.final_grad ), -CLIP_GRAD, CLIP_GRAD)
 
 
 	def backward_pass(self, Y_predict, Y_true, i):
