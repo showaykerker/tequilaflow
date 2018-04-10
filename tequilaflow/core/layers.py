@@ -7,8 +7,8 @@ import copy
 
 class Input(layer):
 	def __init__(self, n_input, n_output, 
-				 kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1,
-				 bias_initializer='Gaus', bias_mean=0, bias_std=0.1):
+				 kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.03,
+				 bias_initializer='Ones', bias_mean=0, bias_std=0.03):
 		super().__init__(n_input=n_input, n_output=n_output, layer_type='Input', 
 						 kernel_initializer=kernel_initializer, kernel_mean=kernel_mean, kernel_std=kernel_std,
 						 bias_initializer=bias_initializer, bias_mean=bias_mean, bias_std=bias_std)
@@ -36,8 +36,8 @@ class Output(layer):
 
 class Dense(layer):
 	def __init__(self, n_output, last_layer, n_input=None, 
-				 kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1,
-				 bias_initializer='Gaus', bias_mean=0, bias_std=0.1):
+				 kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.03,
+				 bias_initializer='Ones', bias_mean=0, bias_std=0.03):
 		super().__init__(n_input=last_layer.n_output, n_output=n_output, last_layer=last_layer, layer_type='Dense', 
 						 kernel_initializer=kernel_initializer, kernel_mean=kernel_mean, kernel_std=kernel_std,
 						 bias_initializer=bias_initializer, bias_mean=bias_mean, bias_std=bias_std)

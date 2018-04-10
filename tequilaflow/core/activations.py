@@ -88,10 +88,14 @@ class Tanh(Activation):
 		super().__init__(last_layer)
 
 	def kernel(self, X_): 
-		_X = X_[0]
+		s = X_.shape
 		X_ret = copy.deepcopy(X_)
-		for i, v in enumerate(X_ret[0]):
-			X_ret[0][i] = math.tanh(v)
+		_X = X_ret.flatten()
+		for i, v in enumerate(_X):
+			#print(_X)
+			_X[i] = math.tanh(v)
+			#input(_X)
+		X_ret = np.reshape(_X, s)
 		return X_ret
 
 	def diff(self,X_):
@@ -101,9 +105,9 @@ class Tanh(Activation):
 		return ret	
 
 	def forward(self, X_): 
-		self.before_ = X_
-		self.after_ = self.kernel(X_)
-		return self.after_
+		#self.before_ = X_
+		#self.after_ = self.kernel(X_)
+		return self.kernel(X_)
 
 	def __str__(self): 
 		return super().__str__('tanh')

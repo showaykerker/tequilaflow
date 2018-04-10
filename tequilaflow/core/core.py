@@ -39,8 +39,8 @@ class node:
 
 class layer:
 	def __init__(self, n_input=None, n_output=None, last_layer=None, layer_type='Dense', 
-					kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1,
-					bias_initializer='Gaus', bias_mean=0, bias_std=0.1):
+					kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.001,
+					bias_initializer='Gaus', bias_mean=0, bias_std=0.001):
 		if layer_type not in LAYERS: raise ValueError('Layer type %s not recognized.' % ( str(type_) ))
 		self.n_output = n_output
 		self.n_input = self.n_nodes = n_input
@@ -101,7 +101,15 @@ class layer:
 				for i, next_node in enumerate(self.next_layer.nodes):
 					# scalar          scalar               scalar         scalar
 					#                 diff of activation,  forward pass,  backward pass
+					
+					import math
 					node.grad[0][i] = next_node.value *    node.value *   next_node.grad[0][0]
+					if next_node.grad[0][0] == math.nan:
+						print('\tnode.grad[0][i]=',node.grad[0][i])
+						print('\tnext_node.value=',next_node.value)
+						print('\tnode.value=',node.value)
+						print('\tnext_node.grad[0][0]=',next_node.grad[0][0])
+						input()
 
 
 
@@ -164,6 +172,7 @@ class Model:
 			vec_now = layer.forward(vec_now)
 
 	def update_grad(self, i):
+		if i < 0: raise ValueError(i)
 		if i == 0:
 			for layer in self.layers:
 				for node in layer.nodes:
@@ -189,8 +198,6 @@ class Model:
 			if layer.layer_type in ['Activation','Output']: continue
 			for node in layer.nodes:
 				node.vec = self.optimizer.optimize(node.vec, node.grad)
-			#print('b4 update_matrix')
-			#input(layer)
 			layer.update_matrix()
 
 
@@ -222,7 +229,7 @@ class Model:
 	def validation(self, X_, Y_):
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		Y_pred = self.forward(X_)
-		acc_tmp = 1 - abs((Y_pred-Y_))/abs(Y_)
+		acc_tmp = 1 - abs((Y_pred-Y_))/abs(Y_+1e-20)
 		acc = acc_tmp.mean()
 		return acc
 			
@@ -275,7 +282,7 @@ if __name__ == '__main__':
 	#a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1, bias_initializer='Ones')
 	a = Output(a)
 	model = Model(a)
-	model.compile(optimizer='SGD', loss='se')
+	model.compile(optimizer='SGD', loss='mse')
 	print(model)
 	model.update(X, Y, batch_size=4, trainig_epoch=560, X_val=X, Y_val=Y, validate_every_n_epoch=25)
 	print(model.forward(X[:10]))
