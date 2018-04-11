@@ -227,6 +227,7 @@ class Model:
 			
 
 			if (epoch+1)%record_every_n_epoch == 0 or epoch == 0:
+				acc, est = self.validation(X_val, Y_val)
 				hist['acc'].append(acc)
 				hist['loss'].append(est)	
 
