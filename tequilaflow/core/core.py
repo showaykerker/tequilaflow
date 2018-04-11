@@ -38,12 +38,13 @@ class node:
 		return self.vec
 
 	def __str__(self):
-		return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\t%s\t%s\t%s\n' % (self.type, self.value, self.vec.shape, str(self.vec), str(self.grad), str(self.final_grad))
+		#return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\t%s\t%s\t%s\n' % (self.type, self.value, self.vec.shape, str(self.vec), str(self.grad), str(self.final_grad))
+		return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\t%s\n' % (self.type, self.value, self.vec.shape, str(self.vec))
 
 class layer:
 	def __init__(self, n_input=None, n_output=None, last_layer=None, layer_type='Dense', 
-					kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.001,
-					bias_initializer='Gaus', bias_mean=0, bias_std=0.001):
+					kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.01,
+					bias_initializer='Gaus', bias_mean=0, bias_std=0.01):
 		if layer_type not in LAYERS: raise ValueError('Layer type %s not recognized.' % ( str(type_) ))
 		self.n_output = n_output
 		self.n_input = self.n_nodes = n_input
@@ -205,7 +206,8 @@ class Model:
 
 
 	# Update Weights using Back Propagation
-	def update(self, X_, Y_, batch_size=4, trainig_epoch=80, X_val=None, Y_val=None, validate_every_n_epoch=None):
+	def update(self, X_, Y_, batch_size=4, trainig_epoch=80, X_val=None, Y_val=None, validate_every_n_epoch=None, record_every_n_epoch=100):
+		hist={'acc':[], 'loss':[]}
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		self.loss.set_batch_size(batch_size)
 		for epoch in range(trainig_epoch):
@@ -222,11 +224,27 @@ class Model:
 
 			self.apply_final_grad()
 
-			if validate_every_n_epoch is not None and \
-			X_val is not None and Y_val is not None and \
-			(epoch+1)%validate_every_n_epoch == 0:
-				acc = self.validation(X_val, Y_val)
-				print('  Epoch #%d, acc=%9.6f'%(epoch+1, acc))
+			
+
+			if (epoch+1)%record_every_n_epoch == 0 or epoch == 0:
+				hist['acc'].append(acc)
+				hist['loss'].append(est)	
+
+			if validate_every_n_epoch is not None and X_val is not None and Y_val is not None and (epoch+1)%validate_every_n_epoch == 0:
+				acc, est = self.validation(X_val, Y_val)
+				print('  Epoch #%d, loss=%9.6f, acc=%9.6f, lr=%14.12f'%(epoch+1, est, acc, self.optimizer.get_lr()))
+				check_ = True
+				for i in range(1, 10):
+					if hist['acc'][-i] > hist['acc'][-i-1]:
+						check_ = False
+						break
+				if check_: 
+					print('Broken!')
+					break
+		return hist
+				
+
+
 
 
 	def validation(self, X_, Y_):
@@ -290,5 +308,5 @@ if __name__ == '__main__':
 	model = Model(a)
 	model.compile(optimizer='SGD', loss='mse', estimator='rms')
 	print(model)
-	model.update(X, Y, batch_size=4, trainig_epoch=560, X_val=X, Y_val=Y, validate_every_n_epoch=25)
+	hist = model.update(X, Y, batch_size=4, trainig_epoch=560, X_val=X, Y_val=Y, validate_every_n_epoch=25)
 	print(model.forward(X[:10]))
