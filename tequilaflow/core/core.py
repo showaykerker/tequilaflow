@@ -233,10 +233,10 @@ class Model:
 
 			if validate_every_n_epoch is not None and X_val is not None and Y_val is not None and (epoch+1)%validate_every_n_epoch == 0:
 				acc, est = self.validation(X_val, Y_val)
-				print('  Epoch #%d, loss=%9.6f, acc=%9.6f, lr=%14.12f'%(epoch+1, est, acc, self.optimizer.get_lr()))
+				print('  Epoch #%.7d, loss=%9.6f, acc=%9.6f, lr=%14.12f'%(epoch+1, est, acc, self.optimizer.get_lr()))
 				check_ = True
-				for i in range(1, 10):
-					if hist['acc'][-i] > hist['acc'][-i-1]:
+				for i in range(1, 25):
+					if hist['acc'][-i] > hist['acc'][-i-1]:# or hist['loss'][-i]<hist['loss'][-i-1]:
 						check_ = False
 						break
 				if check_: 
@@ -244,8 +244,6 @@ class Model:
 					break
 		return hist
 				
-
-
 
 
 	def validation(self, X_, Y_):
