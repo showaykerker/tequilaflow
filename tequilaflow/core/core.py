@@ -139,7 +139,7 @@ class Model:
 
 	# Do exactly same thing as Model.forward.
 	def predict(self, x):
-		self.forward(x)
+		return self.forward(x)
 
 	# Feed Forward
 	def forward(self, x):
@@ -207,41 +207,55 @@ class Model:
 
 	# Update Weights using Back Propagation
 	def update(self, X_, Y_, batch_size=4, trainig_epoch=80, X_val=None, Y_val=None, validate_every_n_epoch=None, record_every_n_epoch=100):
-		hist={'acc':[], 'loss':[]}
+		hist={'acc':[], 'loss':[], 'best':copy.deepcopy(self), 'best_loss':100}
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		self.loss.set_batch_size(batch_size)
-		for epoch in range(trainig_epoch):
-			idx = np.random.choice(np.arange(len(X_)), batch_size, replace=False)
-			X, Y = X_[idx], Y_[idx]
-			self.init_grad_table()
+		try:
+			for epoch in range(trainig_epoch):
+				idx = np.random.choice(np.arange(len(X_)), batch_size, replace=False)
+				X, Y = X_[idx], Y_[idx]
+				self.init_grad_table()
 
-			for i, (x, y) in enumerate(zip(X, Y)):
-				x = np.reshape(x, (1, x.shape[0]))
-				y = np.reshape(y, (1, y.shape[0]))
-				# X[data], Y[data]
-				self.forward_pass(x)
-				self.backward_pass(self.forward(X), Y, i)
+				for i, (x, y) in enumerate(zip(X, Y)):
+					x = np.reshape(x, (1, x.shape[0]))
+					y = np.reshape(y, (1, y.shape[0]))
+					# X[data], Y[data]
+					self.forward_pass(x)
+					self.backward_pass(self.forward(X), Y, i)
 
-			self.apply_final_grad()
+				self.apply_final_grad()
 
-			
+				
 
-			if (epoch+1)%record_every_n_epoch == 0 or epoch == 0:
-				acc, est = self.validation(X_val, Y_val)
-				hist['acc'].append(acc)
-				hist['loss'].append(est)	
+				if (epoch+1)%record_every_n_epoch == 0 or epoch == 0:
+					acc, est = self.validation(X_val, Y_val)
+					hist['acc'].append(acc)
+					hist['loss'].append(est)	
 
-			if validate_every_n_epoch is not None and X_val is not None and Y_val is not None and (epoch+1)%validate_every_n_epoch == 0:
-				acc, est = self.validation(X_val, Y_val)
-				print('  Epoch #%.7d, loss=%9.6f, acc=%9.6f, lr=%14.12f'%(epoch+1, est, acc, self.optimizer.get_lr()))
-				check_ = True
-				for i in range(1, 25):
-					if hist['acc'][-i] > hist['acc'][-i-1]:# or hist['loss'][-i]<hist['loss'][-i-1]:
-						check_ = False
+				if validate_every_n_epoch is not None and X_val is not None and Y_val is not None and (epoch+1)%validate_every_n_epoch == 0:
+					acc, est = self.validation(X_val, Y_val)
+					if abs(est)<hist['best_loss']: hist['best'], hist['best_loss'] = copy.deepcopy(self), est
+					print('  Epoch #%.7d, loss=%14.12f, acc=%14.12f, lr=%14.12f'%(epoch+1, est, acc, self.optimizer.get_lr()))
+					check_ = True
+					for i in range(1, 25):
+						try:
+							if hist['acc'][-i] > hist['acc'][-i-1]:# or hist['loss'][-i]<hist['loss'][-i-1]:
+								check_ = False
+								break
+						except:
+							print(hist)
+							print(i)
+							input()
+					if check_: 
+						print('Broken!')
 						break
-				if check_: 
-					print('Broken!')
-					break
+
+		except KeyboardInterrupt:
+			print('\nKeyboardInterrupt!')
+		except Exception as ex:
+			print('Error Happens!', ex)
+
+
 		return hist
 				
 
