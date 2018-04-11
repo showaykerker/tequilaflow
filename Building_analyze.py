@@ -39,7 +39,7 @@ def preprocess(df, H):
 	#print(scalars)
 	X = X_T.T
 	#print(X.shape, Y.shape, 'In preprocess')
-	return X, Y
+	return X, Y, scalars
 
 def get_data():
 	data = pd.read_csv('energy_efficiency_data.csv')
@@ -59,27 +59,34 @@ def get_data():
 			df = pd.get_dummies(data=df, columns=one_hot_c)
 
 	#df = pd.concat([df, back], axis=1)
-	X, Y = preprocess(df, H)
+	X, Y, scalars = preprocess(df, H)
 	#print(X.shape, Y.shape, 'In get_data')
-	return X, Y
+	return X, Y, scalars
 
 def get_model(input_size):
-	a = Input(n_input=input_size, n_output=5)
+	a = Input(n_input=input_size, n_output=6)
 	a = Linear(a)
-	a = Dense(7, a)
-	a = Tanh(a)
-	a = Dense(5, a)
-	a = Tanh(a)
+	a = Dense(8, a)
+	a = Linear(a)
+	#a = Dense(32, a)
+	#a = Tanh(a)
+	a = Dense(4, a)
+	a = Sigmoid(a)
+	a = Dense(2, a)
+	a = Sigmoid(a)
 	a = Dense(1, a)
 	a = Linear(a)
+	a = Dense(2, a)
+	a = Linear(a)
+	a = Dense(1, a)
 	a = Output(a)
 	model = Model(a)
-	model.compile(optimizer='SGD', lr=0.00003, decay_rate=0.99996 , loss='se', estimator='rms')
+	model.compile(optimizer='SGD', lr=0.001, decay_rate=0.9999996 , loss='se', estimator='rms')
 	#print(model)
 	return model
 
 def main():
-	X, Y = get_data()
+	X, Y, scalars = get_data()
 	randomize = np.arange(len(X))
 	np.random.shuffle(randomize)
 	X = X[randomize]
@@ -89,11 +96,39 @@ def main():
 	X_test,  Y_test  = X[576:], Y[576:]
 	model = get_model(input_shape)
 
-	hist = model.update(X_train, Y_train, batch_size=3, trainig_epoch=240000, 
-				X_val=X_test[:100], Y_val=Y_test[:100], validate_every_n_epoch=2000, record_every_n_epoch=100)
+	hist = model.update(X_train, Y_train, batch_size=2, trainig_epoch=240000, 
+				X_val=X_test, Y_val=Y_test, validate_every_n_epoch=16000, record_every_n_epoch=100)
 
-	plt.plot(hist['acc'], color='red', linewidth=1)
-	plt.plot(hist['loss'], color='green', linwidth=1, linestyle='dashed')
+
+	'''
+	Y_test_pred = scalars['Y'].inverse_transform(model.predict(X_test))
+	Y_train_pred = scalars['Y'].inverse_transform(model.predict(X_train))
+	Y_train = scalars['Y'].inverse_transform(Y_train)
+	Y_test = scalars['Y'].inverse_transform(Y_test)
+	'''
+	Y_test_pred = hist['best'].predict(X_test)
+	Y_train_pred = hist['best'].predict(X_train)
+	Y_train = Y_train
+	Y_test = Y_test
+	#input(Y_test_pred)
+	#input(Y_train_pred)
+
+	print('Lowest Loss:', hist['best_loss'])
+
+	fig, ax = plt.subplots(2,2)
+	ax[0][0].plot(hist['acc'], color='red', linewidth=1)
+	ax[0][0].set_title('acc')
+	ax[0][1].plot(hist['loss'], color='green', linewidth=1)
+	ax[0][1].set_title('loss')
+	ax[1][0].plot(Y_train.flatten(), color='blue', label='label')
+	ax[1][0].plot(Y_train_pred.flatten(), color='orange', label='predict', linewidth=1)
+	ax[1][0].set_title('Heat load for training dataset')
+	ax[1][0].legend(loc='upper left')
+	ax[1][1].plot(Y_test.flatten(), color='blue', label='label')
+	ax[1][1].plot(Y_test_pred.flatten(), color='orange', label='predict', linewidth=1)
+	ax[1][1].set_title('Heat load for testing dataset')
+	ax[1][1].legend(loc='upper left')
+	plt.show()
 
 if __name__ == '__main__':
 	main()
