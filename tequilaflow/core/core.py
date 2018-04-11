@@ -234,11 +234,12 @@ class Model:
 		Y_pred = self.forward(X_)
 		acc_tmp = 1 - abs((Y_pred-Y_))/abs(Y_+1e-20)
 		acc = acc_tmp.mean()
-		return acc
+		estimator_error = self.estimator.get_performance(Y_pred, Y_)
+		return acc, estimator_error
 			
 
 	# Make sure witch optimizer and loss to use.
-	def compile(self, optimizer=None, loss=None, lr=0.01):
+	def compile(self, optimizer=None, lr=0.01, decay_rate=0.999 , loss=None, estimator=None):
 		if self.layers[0].layer_type  != 'Input' : raise RuntimeError('First layer must be Input layer')
 		if self.layers[-1].layer_type != 'Output': raise RuntimeError('Last layer must be Output layer')
 		self.compiled = True
@@ -247,13 +248,15 @@ class Model:
 			else: self.layers[i].link_next_layer(self.layers[i+1])
 		self.n_input = self.layers[0].n_input
 		self.n_output = self.layers[-1].n_output
-		self.optimizer = Model_optimizer(type=optimizer, lr=lr)
+		self.optimizer = Model_optimizer(type=optimizer, lr=lr, decay_rate=decay_rate)
 		self.lr = lr
+		self.decay_rate = decay_rate
 		self.loss = Model_loss(loss_func=loss)
+		self.estimator = Model_loss(estimator)
 		
 
 	def __str__(self):
-		ret = '<Class Model> Input Shape = %s, Output Shape = %s\n' % (self.input_shape, self.output_shape)
+		ret = '<Class Model> Compiled = %s, Input Shape = %s, Output Shape = %s\n' % (self.compiled, self.input_shape, self.output_shape)
 		for i in self.layers:
 			ret += i.__str__()
 		return ret
@@ -285,7 +288,7 @@ if __name__ == '__main__':
 	#a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.1, bias_initializer='Ones')
 	a = Output(a)
 	model = Model(a)
-	model.compile(optimizer='SGD', loss='mse')
+	model.compile(optimizer='SGD', loss='mse', estimator='rms')
 	print(model)
 	model.update(X, Y, batch_size=4, trainig_epoch=560, X_val=X, Y_val=Y, validate_every_n_epoch=25)
 	print(model.forward(X[:10]))

@@ -20,6 +20,9 @@ class Model_loss: # wrapper
 	def get_pCpy(self, y_pred, y_true, idx):
 		return self.loss_func.get_pCpy(y_pred, y_true, idx)
 
+	def get_performance(self, Y_pred, Y_true):
+		return self.loss_func.get_performance(Y_pred, Y_true)
+
 	def __str__(self):
 		return '<class Model_loss> loss_func=%s' % (self.l)
 
@@ -31,7 +34,11 @@ class loss_function(object): # for inherit
 
 	def get_vector(self, Y_predict, Y_true, batch_size=None):
 		if Y_predict.shape != Y_true.shape : raise ValueError('Y shape mismatch. %s and %s'%(str(Y_predict.shape), str(Y_true.shape)))
-		if batch_size == None : raise ValueError('batch_size is None')
+		if batch_size == None : 
+			self.batch_size = Y_predict.shape[0] 
+			#raise ValueError('batch_size is None')
+		elif batch_size is not Y_predict.shape[0]:
+			raise ValueError('batch_size error')
 		#else: self.batch_size = batch_size
 
 	def get_pCpy(self, Y_predict, Y_true, get_v, idx):
@@ -43,7 +50,9 @@ class loss_function(object): # for inherit
 		plus = get_v(Y_pred_p, Y_true, 1, pass_=True)
 		minus = get_v(Y_pred_m, Y_true, 1, pass_=True)
 		return np.expand_dims( (plus-minus)/(2*d) , axis=0 )
-		
+	
+	def get_performance(self, Y_pred, Y_true):
+		raise NotImplementedError('get_acc not implemented')
 
 
 class root_mean_square_error(loss_function):
@@ -63,6 +72,10 @@ class root_mean_square_error(loss_function):
 		ret = np.expand_dims(ret, axis=0)
 		return ret
 
+	def get_performance(self, Y_pred, Y_true):
+		ret = self.get_vector(Y_pred, Y_true, batch_size=None)
+		return ret.mean()
+
 
 class mean_square_error(loss_function):
 	def __init__(self):
@@ -78,6 +91,9 @@ class mean_square_error(loss_function):
 	def get_pCpy(self, Y_predict, Y_true, idx=None):
 		return np.expand_dims(Y_predict[idx]-Y_true[idx], axis=0)
 
+	def get_performance(self, Y_pred, Y_true):
+		ret = self.get_vector(Y_pred, Y_true, batch_size=None)
+		return ret.mean()
 
 class square_error(loss_function):
 	def __init__(self):
@@ -111,7 +127,7 @@ class square_error(loss_function):
 		#input()
 		
 		'''
-		[[0.01710896 0.01710896 0.01710896]]
+		[[0.0684356 0.0684356 0.0684356]]
 		'''
 
 		return tot_loss
@@ -120,6 +136,9 @@ class square_error(loss_function):
 		#input( np.expand_dims((2*Y_predict-2*Y_true)[idx], axis=0))
 		return np.expand_dims((2*Y_predict-2*Y_true)[idx], axis=0)
 
+	def get_performance(self, Y_pred, Y_true):
+		ret = self.get_vector(Y_pred, Y_true, batch_size=None)
+		return ret.mean()
 
 class cross_entropy(loss_function):
 	def __init__(self):
@@ -146,3 +165,7 @@ class cross_entropy(loss_function):
 	def get_pCpy(self, Y_predict, Y_true, idx=None):
 		ret = super().get_pCpy(Y_predict, Y_true, self.get_vector, idx=idx)[0]
 		return ret
+
+	def get_performance(self, Y_pred, Y_true):
+		ret = self.get_vector(Y_pred, Y_true, batch_size=None)
+		return ret.mean()
