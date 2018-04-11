@@ -1,7 +1,7 @@
-from core import *
-from layers import *
-from activations import *
-from loss import *
+from .core import *
+from .layers import *
+from .activations import *
+from .loss import *
 import matplotlib.pyplot as plt
 import numpy as np
 np.random.seed(1)

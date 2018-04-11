@@ -1,6 +1,6 @@
 from __future__ import absolute_import
-from core import *
-from exhaustion import *
+from .core import *
+from .exhaustion import *
 import numpy as np
 import copy
 

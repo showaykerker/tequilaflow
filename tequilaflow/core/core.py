@@ -1,9 +1,10 @@
 from __future__ import absolute_import
-from exhaustion import *
+from .exhaustion import *
 import numpy as np
 import copy
-from loss import *
-from optimizers import *
+from .loss import *
+from .optimizers import *
+from ..utils.preprocess import *
 
 CLIP_GRAD = 0.04
 

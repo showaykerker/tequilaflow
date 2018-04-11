@@ -1,7 +1,7 @@
 from __future__ import absolute_import
-from core import *
-from exhaustion import *
-from layers import *
+from .core import *
+from .exhaustion import *
+from .layers import *
 import numpy as np
 import copy
 import math
