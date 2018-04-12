@@ -15,26 +15,26 @@ def get_data():
 	data = loadmat('spam_data.mat')
 	#print(data)
 	#print(data.keys())
+	
 	X_train, Y_train = data['train_x'], data['train_y']
 	X_test, Y_test = data['test_x'], data['test_y']
+	randomize = np.arange(len(X_train))
+	np.random.shuffle(randomize)
+	X_train = X_train[randomize]
+	Y_train = Y_train[randomize]
+
 	return X_train, Y_train, X_test, Y_test
 
 def get_model():
-	a = Input(n_input=40, n_output=32, kernel_initializer='Gaus', kernel_mean=0.1, kernel_std=0.5, bias_initializer='Ones')
+	a = Input(n_input=40, n_output=36, kernel_initializer='Gaus', kernel_mean=0., kernel_std=0.45, bias_initializer='Ones')
 	a = Linear(a)
-	a = Dense(16, a, kernel_initializer='Gaus', kernel_mean=0., kernel_std=0.3, bias_initializer='Ones')
-	a = Tanh(a)
-	a = Dense(8, a, kernel_initializer='Gaus', kernel_mean=0., kernel_std=0.3, bias_initializer='Ones')
+	a = Dense(32, a, kernel_initializer='Gaus', kernel_mean=0., kernel_std=0.1, bias_initializer='Ones')
 	a = Linear(a)
-	a = Dense(8, a, kernel_initializer='Gaus', kernel_mean=0., kernel_std=0.3, bias_initializer='Ones')
-	a = Linear(a)
-	a = Dense(4, a, kernel_initializer='Gaus', kernel_mean=0., kernel_std=0.3, bias_initializer='Ones')
-	a = Linear(a)
-	a = Dense(2, a, kernel_initializer='Gaus', kernel_mean=0., kernel_std=0.3, bias_initializer='Ones')
+	a = Dense(2, a, kernel_initializer='Gaus', kernel_mean=0., kernel_std=0.1, bias_initializer='Ones')
 	a = Linear(a)
 	a = Softmax(a)
 	model = Model(a)
-	model.compile(optimizer='SGD', lr=0.0003, decay_rate=1 , loss='cross_entropy')
+	model.compile(optimizer='SGD', lr=0.0006, decay_rate=0.99998 , loss='cross_entropy')
 	return model
 
 if __name__ == '__main__':
@@ -42,37 +42,75 @@ if __name__ == '__main__':
 	X_train += 0.1
 	X_test += 0.1
 	model = get_model()
-	#print(model)
+
+
+	hist = model.update(X_train, Y_train, batch_size=32, trainig_epoch=3000, 
+				X_val=X_test, Y_val=Y_test, validate_every_n_epoch=50, record_every_n_epoch=5)
+
+	C1_10, C2_10 = [[],[]], [[],[]]
+	C1_m, C2_m = [[],[]], [[],[]]
+	C1_L, C2_L = [[],[]], [[],[]]
+	#try:
+
+	last = len(hist['acc'])
+
+	mid = int((last-2-10)/2)
+	latent10 = model.latent_monitor[10]
+	latentm = model.latent_monitor[mid]
+	latentL = model.latent_monitor[last-2]
+
+	#print(latent10)
+	#input(latentL)
+
+	for i,v in enumerate(latent10['class']):
+		if v == 0 : 
+			x, y = latent10['val'][i]
+			C1_10[0].append(x)
+			C1_10[1].append(y)
+		else: 
+			x, y = latent10['val'][i]
+			C2_10[0].append(x)
+			C2_10[1].append(y)
+
+	for i,v in enumerate(latentm['class']):
+		if v == 0 : 
+			x, y = latentm['val'][i]
+			C1_m[0].append(x)
+			C1_m[1].append(y)
+		else: 
+			x, y = latentL['val'][i]
+			C2_m[0].append(x)
+			C2_m[1].append(y)
+
+	for i,v in enumerate(latentL['class']):
+		if v == 0 : 
+			x, y = latentL['val'][i]
+			C1_L[0].append(x)
+			C1_L[1].append(y)
+		else: 
+			x, y = latentL['val'][i]
+			C2_L[0].append(x)
+			C2_L[1].append(y)
+	#except:
+	#	pass
+	'''
+	print(C1_10)
+	print(C2_10)
+	print(C1_L)
+	print(C2_L)
+	input()
+	'''
+	#print(model.latent_monitor[10])
 	#input()
-	#input(X_test)
-
-	hist = model.update(X_train, Y_train, batch_size=16, trainig_epoch=2400000, 
-				X_val=X_test, Y_val=Y_test, validate_every_n_epoch=25, record_every_n_epoch=5)
-	try:
-
-		latent10 = model.latent_monitor[10]
-		latentL = model.latent_monitor[-1]
-		C1_10, C2_10 = [], []
-		C1_L, C2_L = [], []
-		for i,v in enumerate(latent10['class']):
-			if v == 0 : C1_10.append(latent10['val'][i])
-			else: C2_10.append(latent10['val'][i])
-
-		for i,v in enumerate(latentL['class']):
-			if v == 0 : C1_L.append(latentL['val'][i])
-			else: C2_L.append(latentL['val'][i])
-
-	except:
-		pass
 
 	print(model.predict(X_test[:10]))
 	input(Y_test[:10])
+
 	Y_test_pred = hist['best'].predict(X_test).argmax(axis=1)
 	Y_train_pred = hist['best'].predict(X_train).argmax(axis=1)
 	Y_train = Y_train.argmax(axis=1)
 	Y_test = Y_test.argmax(axis=1)
-	#input(Y_test_pred)
-	#input(Y_train_pred)
+
 
 	print('Lowest Loss:', hist['best_loss'])
 
@@ -82,7 +120,8 @@ if __name__ == '__main__':
 	ax1 = plt.subplot2grid((2, 3), (0, 1))
 	ax2 = plt.subplot2grid((2, 3), (0, 2))
 	ax3 = plt.subplot2grid((2, 3), (1, 0))
-	ax4 = None
+	ax4 = plt.subplot2grid((2, 3), (1, 1))
+	ax5 = plt.subplot2grid((2, 3), (1, 2))
 
 	#fig, ax = plt.subplots(2,2)
 	ax0.plot(hist['loss'], color='green', linewidth=1)
@@ -92,9 +131,20 @@ if __name__ == '__main__':
 	ax2.plot([1-i for i in hist['acc']], color='red', linewidth=1)
 	ax2.set_title('Testing error rate')
 
-	
+	ax3.scatter(x=C1_10[0], y=C1_10[1], c='red', label='Class 1', alpha=0.6, edgecolors='white')
+	ax3.scatter(x=C2_10[0], y=C2_10[1], c='green', label='Class 2', alpha=0.6, edgecolors='white')
+	ax3.set_title('10 Epoch')
+	ax3.legend()
 
+	ax4.scatter(x=C1_m[0], y=C1_m[1], c='red', label='Class 1', alpha=0.6, edgecolors='white')
+	ax4.scatter(x=C2_m[0], y=C2_m[1], c='green', label='Class 2', alpha=0.6, edgecolors='white')
+	ax4.set_title('%d Epoch'%mid)
+	ax4.legend()
 
+	ax5.scatter(x=C1_L[0], y=C1_L[1], c='red', label='Class 1', alpha=0.6, edgecolors='white')
+	ax5.scatter(x=C2_L[0], y=C2_L[1], c='green', label='Class 2', alpha=0.6, edgecolors='white')
+	ax5.set_title('%d Epoch'%(len(hist['loss'])*5))
+	ax5.legend()
 
 	'''
 	ax[1][0].plot(Y_train.flatten(), 's', color='blue', label='label', marker='x', markersize=0.8)
