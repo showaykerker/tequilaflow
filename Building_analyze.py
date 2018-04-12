@@ -71,8 +71,6 @@ def get_model(input_size):
 	a = Linear(a)
 	a = Dense(8, a)
 	a = Linear(a)
-	#a = Dense(32, a)
-	#a = Tanh(a)
 	a = Dense(4, a)
 	a = Sigmoid(a)
 	a = Dense(2, a)
@@ -81,8 +79,9 @@ def get_model(input_size):
 	a = Linear(a)
 	a = Dense(2, a)
 	a = Linear(a)
-	a = Dense(1, a)
+	a = Dense(1, a, kernel_initializer='Ones', bias_initializer='Ones')
 	a = Output(a)
+
 	model = Model(a)
 	model.compile(optimizer='SGD', lr=0.001, decay_rate=0.9999996 , loss='se', estimator='rms')
 	#print(model)
@@ -100,7 +99,7 @@ def main():
 	model = get_model(input_shape)
 
 	print('Start Training.')
-	hist = model.update(X_train, Y_train, batch_size=2, trainig_epoch=240000, 
+	hist = model.update(X_train, Y_train, batch_size=4, trainig_epoch=240000, 
 				X_val=X_test, Y_val=Y_test, validate_every_n_epoch=16000, record_every_n_epoch=100)
 
 

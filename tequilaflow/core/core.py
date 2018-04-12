@@ -163,7 +163,6 @@ class Model:
 		vec_now = copy.deepcopy(x)
 		for layer in self.layers:
 			if layer.layer_type == 'Activation':
-				#layer.node.value = layer.diff(vec_now)
 				vec = copy.deepcopy(layer.diff(vec_now))
 				for i, node in enumerate(layer.nodes):
 					node.value = vec[0][i]
