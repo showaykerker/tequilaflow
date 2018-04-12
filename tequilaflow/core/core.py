@@ -39,7 +39,7 @@ class node:
 
 	def __str__(self):
 		#return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\t%s\t%s\t%s\n' % (self.type, self.value, self.vec.shape, str(self.vec), str(self.grad), str(self.final_grad))
-		return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\t%s\n' % (self.type, self.value, self.vec.shape, str(self.vec))
+		return '\t\t<Class node> type=%7s, value=%5.2f, shape=%s\t%s\t%s\n' % (self.type, self.value, self.vec.shape, str(self.vec), str(self.grad))
 
 class layer:
 	def __init__(self, n_input=None, n_output=None, last_layer=None, layer_type='Dense', 
@@ -52,6 +52,7 @@ class layer:
 		self.next_layer = None
 		self.layer_type = layer_type
 		self.nodes=[]
+		self.sub_type=None
 		if layer_type == 'Activation' or layer_type == 'Output' : # Don't need bias node.
 			for i in range(0, self.n_nodes): 
 				nd = node(n_output, node_type=layer_type)
@@ -93,14 +94,15 @@ class layer:
 
 	def backward(self, bpass_init=None):
 		if self.layer_type == 'Output': 
-			#print('\t\tbpass_init=', bpass_init)
 			for node, val in zip(self.nodes, bpass_init.flatten()):
 				node.grad.fill(val)
+			#input(self)
 		elif self.layer_type == 'Activation': 
 			for i, node in enumerate(self.nodes):
 				sum_ = self.next_layer.nodes[i].grad.sum()
 				node.grad.fill(sum_)
 		elif self.layer_type in ['Dense', 'Input']:
+			#print(self.layer_type)
 			for node in self.nodes:
 				for i, next_node in enumerate(self.next_layer.nodes):
 					# scalar          scalar               scalar         scalar
@@ -108,7 +110,8 @@ class layer:
 					
 					import math
 					node.grad[0][i] = next_node.value *    node.value *   next_node.grad[0][0]
-
+					#print('\t', node.grad[0][i], '\t',next_node.value, node.value, next_node.grad[0][0])
+					#input()
 					if next_node.grad[0][0] == np.nan:
 						print('\tnode.grad[0][i]=',node.grad[0][i])
 						print('\tnext_node.value=',next_node.value)
@@ -137,6 +140,8 @@ class Model:
 		self.input_shape = (1, self.layers[0].matrix.shape[0]-1)
 		self.output_shape = (1, self.layers[-1].matrix.shape[1])
 		self.compiled = None
+		self.latent_monitor = {}
+		self.latent_counter = 0
 
 	# Do exactly same thing as Model.forward.
 	def predict(self, x):
@@ -162,18 +167,35 @@ class Model:
 	def forward_pass(self, x):
 		vec_now = copy.deepcopy(x)
 		for layer in self.layers:
-			if layer.layer_type == 'Activation':
-				vec = copy.deepcopy(layer.diff(vec_now))
+
+			if layer.layer_type == 'Activation' or layer.sub_type=='Softmax':
+				vec = layer.diff(vec_now)
 				for i, node in enumerate(layer.nodes):
 					node.value = vec[0][i]
-			for v, node in zip(x[0], layer.nodes):
-				if node.type == 'regular':
-					node.value = v
-				elif node.type == 'bias':
-					node.value = 1
+			else:
+				for v, node in zip(vec_now[0], layer.nodes):
+					
+					if node.type == 'regular':
+						node.value = v
+					elif node.type == 'bias':
+						node.value = 1
+				#print('='*10)
+				#print(layer)
+				#input('='*10)
 			#if layer.layer_type=='Output':
 			#	print('-'*20)
+				#input(vec_now[0])
 			vec_now = layer.forward(vec_now)
+			#input(vec_now[0])
+			if layer == self.layers[-2]:
+				self.latent_monitor[self.latent_counter]={'val':[], 'class':[]}
+				self.latent_monitor[self.latent_counter]['val'].append(tuple([n.value for n in layer.nodes]))
+
+			#print(vec_now)
+			#print(layer.matrix)
+			#input()
+
+		self.latent_monitor[self.latent_counter]['val'].append(vec_now)
 
 	def update_grad(self, i):
 		if i < 0: raise ValueError(i)
@@ -200,9 +222,12 @@ class Model:
 	def apply_final_grad(self):
 		for layer in self.layers:
 			if layer.layer_type in ['Activation','Output']: continue
+			#print(layer.layer_type)
 			for node in layer.nodes:
 				node.vec = self.optimizer.optimize(node.vec, node.grad)
+				#input('\t%s\t%s'%(node.vec, node.grad))
 			layer.update_matrix()
+			#input(layer)
 
 
 	# Update Weights using Back Propagation
@@ -212,11 +237,15 @@ class Model:
 		self.loss.set_batch_size(batch_size)
 		try:
 			for epoch in range(trainig_epoch):
+				#print('Epoch #%d'%epoch)
+				#input(self)
 				idx = np.random.choice(np.arange(len(X_)), batch_size, replace=False)
 				X, Y = X_[idx], Y_[idx]
 				self.init_grad_table()
 
+
 				for i, (x, y) in enumerate(zip(X, Y)):
+					#print('\tData #%d'%i)
 					x = np.reshape(x, (1, x.shape[0]))
 					y = np.reshape(y, (1, y.shape[0]))
 					# X[data], Y[data]
@@ -236,6 +265,8 @@ class Model:
 					acc, est = self.validation(X_val, Y_val)
 					if abs(est)<hist['best_loss']: hist['best'], hist['best_loss'] = copy.deepcopy(self), est
 					print('  Epoch #%.7d, loss=%14.12f, acc=%14.12f, lr=%14.12f'%(epoch+1, est, acc, self.optimizer.get_lr()))
+					#input(self)
+					'''
 					check_ = True
 					for i in range(1, 25):
 						try:
@@ -249,6 +280,9 @@ class Model:
 					if check_: 
 						print('Broken!')
 						break
+					'''
+
+				self.latent_counter += 1
 
 		except KeyboardInterrupt:
 			print('\nKeyboardInterrupt!')
@@ -263,9 +297,19 @@ class Model:
 	def validation(self, X_, Y_):
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		Y_pred = self.forward(X_)
-		acc_tmp = 1 - abs((Y_pred-Y_))/abs(Y_+1e-20)
-		acc = acc_tmp.mean()
-		estimator_error = self.estimator.get_performance(Y_pred, Y_)
+		if self.loss_type == 'cross_entropy':
+			right, wrong = 0, 0
+			for y_p, y_t in zip(Y_pred, Y_):
+				if y_p.argmax() == y_t.argmax():
+					right += 1
+				else: wrong += 1
+			acc = right / (right+wrong)
+			#print(Y_pred)
+			return acc, self.loss.get_performance(Y_pred, Y_)
+		else:
+			acc_tmp = 1 - abs((Y_pred-Y_))/abs(Y_+1e-20)
+			acc = acc_tmp.mean()
+			estimator_error = self.estimator.get_performance(Y_pred, Y_)
 		return acc, estimator_error
 			
 
@@ -275,7 +319,6 @@ class Model:
 		if self.layers[-1].layer_type not in ['Output']: raise RuntimeError('Last layer must be Output or Softmax layer')
 		if self.layers[-1].sub_type == 'Softmax': 
 			if loss != 'cross_entropy': raise ValueError('loss should be cross_entropy for Softmax')
-
 		self.compiled = True
 		for i in range(len(self.layers)):
 			if i == len(self.layers)-1: self.layers[i].link_next_layer(None)
@@ -286,8 +329,8 @@ class Model:
 		self.lr = lr
 		self.decay_rate = decay_rate
 		self.loss = Model_loss(loss_func=loss)
-		self.estimator = Model_loss(estimator)
-		
+		self.loss_type = loss
+		self.estimator = Model_loss(estimator) if estimator is not None else Model_loss(loss_func=loss)
 
 	def __str__(self):
 		ret = '<Class Model> Compiled = %s, Input Shape = %s, Output Shape = %s\n' % (self.compiled, self.input_shape, self.output_shape)

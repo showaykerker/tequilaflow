@@ -32,7 +32,7 @@ class Output(layer):
 	def forward(self, X_):
 		return X_
 
-	def __str__(self): return super().__str__()		
+	def __str__(self, type_): return super().__str__(type_)
 
 
 class Dense(layer):
