@@ -145,27 +145,18 @@ class cross_entropy(loss_function):
 		super().__init__()
 
 	def get_vector(self, Y_predict, Y_true, batch_size=None, pass_=False):
-		tot_loss = 0
-		if not pass_: 
-			super().get_vector(Y_predict, Y_true, batch_size)
-			if batch_size == None : raise ValueError('batch_size is None')
-			else: self.batch_size = batch_size
-
-		for y_p, y_t in zip(Y_predict, Y_true):
-			err = y_p - y_t
-			inside_ = 0 
-			for k in range(len(y_t)): 
-				inside_ += y_t * np.log(y_p+1) 
-			tot_loss += inside_ 
-		#print('~~',tot_loss)
-		tot_loss = np.expand_dims(tot_loss, axis=0)
-		#input(('showay ', tot_loss))
-		return tot_loss
+		nclass = Y_predict.shape[1]
+		E = - (Y_true * np.log(Y_predict)).sum(axis=1)
+		E = np.expand_dims(E, axis=1)
+		E = np.append(E, E, axis=1)
+		return E
 
 	def get_pCpy(self, Y_predict, Y_true, idx=None):
-		ret = super().get_pCpy(Y_predict, Y_true, self.get_vector, idx=idx)[0]
+		ret = np.expand_dims((Y_predict-Y_true)[idx], axis=0)
 		return ret
 
 	def get_performance(self, Y_pred, Y_true):
 		ret = self.get_vector(Y_pred, Y_true, batch_size=None)
+		#print(ret)
+		#input(ret.mean())
 		return ret.mean()

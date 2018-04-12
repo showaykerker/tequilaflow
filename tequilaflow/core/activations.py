@@ -62,8 +62,8 @@ class Softmax(Output):
 		self.sub_type = 'Softmax'
 
 	def kernel(self, X_): 
-		X_ret = np.zeros(X.shape)
-		for i,row in enumerate(X):
+		X_ret = np.zeros(X_.shape)
+		for i,row in enumerate(X_):
 			exps = np.exp(row-row.max())
 			X_ret[i] = exps/np.sum(exps)
 		return X_ret
@@ -72,12 +72,6 @@ class Softmax(Output):
 		# https://stats.stackexchange.com/questions/235528/backpropagation-with-softmax-cross-entropy
 		# https://en.wikipedia.org/wiki/Activation_function
 		X_ret = copy.deepcopy(X_)
-		for vec in X_ret: # [0.88, 0.12]
-			fi = self.kernel(np.expand_dims(X_ret, axis=0))
-			fy = copy.deepcopy(fi)
-
-
-
 		return X_ret
 
 	def forward(self, X_): 
