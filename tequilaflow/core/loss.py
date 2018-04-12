@@ -146,13 +146,16 @@ class cross_entropy(loss_function):
 
 	def get_vector(self, Y_predict, Y_true, batch_size=None, pass_=False):
 		nclass = Y_predict.shape[1]
-		E = - (Y_true * np.log(Y_predict)).sum(axis=1)
+		E = - (Y_true * np.log(Y_predict+1e-12)).sum(axis=1)
 		E = np.expand_dims(E, axis=1)
 		E = np.append(E, E, axis=1)
 		return E
 
 	def get_pCpy(self, Y_predict, Y_true, idx=None):
-		ret = np.expand_dims((Y_predict-Y_true)[idx], axis=0)
+		ret = np.expand_dims( ((Y_predict-Y_true)/( (Y_predict+1e-12)*(1-Y_predict+1e-12)))[idx], axis=0)
+		#print(Y_predict[idx])
+		#print(Y_true[idx])
+		#input(ret)
 		return ret
 
 	def get_performance(self, Y_pred, Y_true):

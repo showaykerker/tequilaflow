@@ -264,7 +264,11 @@ class Model:
 				if validate_every_n_epoch is not None and X_val is not None and Y_val is not None and (epoch+1)%validate_every_n_epoch == 0:
 					acc, est = self.validation(X_val, Y_val)
 					if abs(est)<hist['best_loss']: hist['best'], hist['best_loss'] = copy.deepcopy(self), est
-					print('  Epoch #%.7d, loss=%14.12f, acc=%14.12f, lr=%14.12f'%(epoch+1, est, acc, self.optimizer.get_lr()))
+
+					print_lr = '' if self.decay_rate == 1 else ', lr=%14.12f' % self.optimizer.get_lr()
+
+					if self.loss_type =='cross_entropy': print('  Epoch #%.7d, loss=%.5f, acc=%.3f'%(epoch+1, est, acc) + print_lr)
+					else: print('  Epoch #%.7d, loss=%14.12f, acc=%14.12f'%(epoch+1, est, acc, self.optimizer.get_lr()) + print_lr)
 					#input(self)
 					'''
 					check_ = True

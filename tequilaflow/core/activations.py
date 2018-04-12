@@ -71,13 +71,15 @@ class Softmax(Output):
 	def diff(self,X_):
 		# https://stats.stackexchange.com/questions/235528/backpropagation-with-softmax-cross-entropy
 		# https://en.wikipedia.org/wiki/Activation_function
+		
+		d = 1e-12
 		X_ret = copy.deepcopy(X_)
-		return X_ret
+		X_a = self.kernel(X_ret+d)
+		X_m = self.kernel(X_ret-d)
+		return (X_a-X_m)/(2*d)
 
 	def forward(self, X_): 
-		self.before_ = X_
-		self.after_ = self.kernel(X_)
-		return self.after_
+		return self.kernel(X_)
 
 	def __str__(self): 
 		return super().__str__('Softmax Output')
