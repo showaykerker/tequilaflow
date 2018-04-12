@@ -272,7 +272,10 @@ class Model:
 	# Make sure witch optimizer and loss to use.
 	def compile(self, optimizer=None, lr=0.01, decay_rate=0.999 , loss=None, estimator=None):
 		if self.layers[0].layer_type  != 'Input' : raise RuntimeError('First layer must be Input layer')
-		if self.layers[-1].layer_type != 'Output': raise RuntimeError('Last layer must be Output layer')
+		if self.layers[-1].layer_type not in ['Output']: raise RuntimeError('Last layer must be Output or Softmax layer')
+		if self.layers[-1].sub_type == 'Softmax': 
+			if loss != 'cross_entropy': raise ValueError('loss should be cross_entropy for Softmax')
+
 		self.compiled = True
 		for i in range(len(self.layers)):
 			if i == len(self.layers)-1: self.layers[i].link_next_layer(None)

@@ -27,6 +27,7 @@ class Input(layer):
 class Output(layer):
 	def __init__(self, last_layer):
 		super().__init__(n_input=last_layer.n_output, n_output=last_layer.n_output, last_layer=last_layer, layer_type='Output')
+		
 
 	def forward(self, X_):
 		return X_

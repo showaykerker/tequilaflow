@@ -9,6 +9,7 @@ import math
 class Relu(Activation):
 	def __init__(self, last_layer): 
 		super().__init__(last_layer)
+		self.sub_type = 'Relu'
 
 	def kernel(self, X_):
 		X_ret = copy.deepcopy(X_)
@@ -39,6 +40,7 @@ class Relu(Activation):
 class Linear(Activation):
 	def __init__(self, last_layer): 
 		super().__init__(last_layer)
+		self.sub_type = 'Linear'
 
 	def kernel(self, X_): 
 		return X_
@@ -57,6 +59,7 @@ class Linear(Activation):
 class Softmax(Output):
 	def __init__(self, last_layer): 
 		super().__init__(last_layer)
+		self.sub_type = 'Softmax'
 
 	def kernel(self, X_): 
 		X_ret = np.zeros(X.shape)
@@ -66,11 +69,12 @@ class Softmax(Output):
 		return X_ret
 
 	def diff(self,X_):
+		# https://stats.stackexchange.com/questions/235528/backpropagation-with-softmax-cross-entropy
 		# https://en.wikipedia.org/wiki/Activation_function
 		X_ret = copy.deepcopy(X_)
 		for vec in X_ret: # [0.88, 0.12]
-			for v in vec:
-
+			fi = self.kernel(np.expand_dims(X_ret, axis=0))
+			fy = copy.deepcopy(fi)
 
 
 
@@ -87,6 +91,7 @@ class Softmax(Output):
 class Tanh(Activation):
 	def __init__(self, last_layer): 
 		super().__init__(last_layer)
+		self.sub_type = 'Tanh'
 
 	def kernel(self, X_): 
 		return np.tanh(X_)
@@ -103,6 +108,7 @@ class Tanh(Activation):
 class Sigmoid(Activation):
 	def __init__(self, last_layer): 
 		super().__init__(last_layer)
+		self.sub_type = 'Sigmoid'
 
 	def kernel(self, X_): 
 		X_ret = copy.deepcopy(X_)
@@ -126,6 +132,7 @@ class Sigmoid(Activation):
 class LeakyRelu(Activation):
 	def __init__(self, last_layer): 
 		super().__init__(last_layer)
+		self.sub_type = 'LeakyRelu'
 
 	def kernel(self, X_): 
 		X_ret = copy.deepcopy(X_)

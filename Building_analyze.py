@@ -75,11 +75,11 @@ def get_model(input_size):
 	a = Sigmoid(a)
 	a = Dense(2, a)
 	a = Sigmoid(a)
-	a = Dense(1, a)
+	a = Dense(2, a)
 	a = Linear(a)
 	a = Dense(2, a)
 	a = Linear(a)
-	a = Dense(1, a, kernel_initializer='Ones', bias_initializer='Ones')
+	a = Dense(1, a, kernel_initializer='Gaus', kernel_mean=1.2, kernel_std=0.3, bias_initializer='Ones')
 	a = Output(a)
 
 	model = Model(a)
