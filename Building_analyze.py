@@ -21,6 +21,7 @@ leaving = list(set(cname)-set(remove_c))
 input_shape = len(leaving)
 
 def preprocess(df, H):
+	print('Start Preprocessing...')
 	cname = list(df)
 	X = df.as_matrix()
 	Y = H.as_matrix()
@@ -42,6 +43,7 @@ def preprocess(df, H):
 	return X, Y, scalars
 
 def get_data():
+	print('Start to get data...')
 	data = pd.read_csv('energy_efficiency_data.csv')
 	df = copy.deepcopy(data)
 	df = df.rename(columns={'# Relative Compactness':'Relative Compactness'})
@@ -64,6 +66,7 @@ def get_data():
 	return X, Y, scalars
 
 def get_model(input_size):
+	print('Getting Model.')
 	a = Input(n_input=input_size, n_output=6)
 	a = Linear(a)
 	a = Dense(8, a)
@@ -96,6 +99,7 @@ def main():
 	X_test,  Y_test  = X[576:], Y[576:]
 	model = get_model(input_shape)
 
+	print('Start Training.')
 	hist = model.update(X_train, Y_train, batch_size=2, trainig_epoch=240000, 
 				X_val=X_test, Y_val=Y_test, validate_every_n_epoch=16000, record_every_n_epoch=100)
 
@@ -115,16 +119,23 @@ def main():
 
 	print('Lowest Loss:', hist['best_loss'])
 
-	fig, ax = plt.subplots(2,2)
+	fig = plt.figure()
+	ax = [[[],[]],[[],[]]]
+	ax[0][0] = plt.subplot2grid((3, 4), (0, 0), colspan=2)
+	ax[0][1] = plt.subplot2grid((3, 4), (0, 2), colspan=2)
+	ax[1][0] = plt.subplot2grid((3, 4), (1, 0), colspan=4, rowspan=1)
+	ax[1][1] = plt.subplot2grid((3, 4), (2, 0), colspan=4, rowspan=1)
+
+	#fig, ax = plt.subplots(2,2)
 	ax[0][0].plot(hist['acc'], color='red', linewidth=1)
 	ax[0][0].set_title('acc')
 	ax[0][1].plot(hist['loss'], color='green', linewidth=1)
 	ax[0][1].set_title('loss')
-	ax[1][0].plot(Y_train.flatten(), color='blue', label='label')
-	ax[1][0].plot(Y_train_pred.flatten(), color='orange', label='predict', linewidth=1)
+	ax[1][0].plot(Y_train.flatten(), color='blue', label='label', linewidth=1.2)
+	ax[1][0].plot(Y_train_pred.flatten(), color='orange', label='predict', linewidth=.6)
 	ax[1][0].set_title('Heat load for training dataset')
 	ax[1][0].legend(loc='upper left')
-	ax[1][1].plot(Y_test.flatten(), color='blue', label='label')
+	ax[1][1].plot(Y_test.flatten(), color='blue', label='label', linewidth=1.5)
 	ax[1][1].plot(Y_test_pred.flatten(), color='orange', label='predict', linewidth=1)
 	ax[1][1].set_title('Heat load for testing dataset')
 	ax[1][1].legend(loc='upper left')
