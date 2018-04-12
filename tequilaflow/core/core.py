@@ -143,6 +143,7 @@ class Model:
 		self.latent_monitor = {}
 		self.latent_counter = 0
 
+
 	# Do exactly same thing as Model.forward.
 	def predict(self, x):
 		return self.forward(x)
@@ -164,8 +165,9 @@ class Model:
 		return self.loss.get_vector(self.forward(X), Y, batch_size)
 
 	# Fill value in nodes.
-	def forward_pass(self, x):
+	def forward_pass(self, x, y=None):
 		vec_now = copy.deepcopy(x)
+		
 		for layer in self.layers:
 
 			if layer.layer_type == 'Activation' or layer.sub_type=='Softmax':
@@ -188,14 +190,13 @@ class Model:
 			vec_now = layer.forward(vec_now)
 			#input(vec_now[0])
 			if layer == self.layers[-2]:
-				self.latent_monitor[self.latent_counter]={'val':[], 'class':[]}
-				self.latent_monitor[self.latent_counter]['val'].append(tuple([n.value for n in layer.nodes]))
+				self.latent_monitor[self.latent_counter]['val'].append(tuple([n for n in vec_now[0]]))
 
 			#print(vec_now)
 			#print(layer.matrix)
 			#input()
-
-		self.latent_monitor[self.latent_counter]['val'].append(vec_now)
+		if self.loss_type == 'cross_entropy':
+			self.latent_monitor[self.latent_counter]['class'].append(y[0].argmax())
 
 	def update_grad(self, i):
 		if i < 0: raise ValueError(i)
@@ -232,7 +233,7 @@ class Model:
 
 	# Update Weights using Back Propagation
 	def update(self, X_, Y_, batch_size=4, trainig_epoch=80, X_val=None, Y_val=None, validate_every_n_epoch=None, record_every_n_epoch=100):
-		hist={'acc':[], 'loss':[], 'best':copy.deepcopy(self), 'best_loss':100}
+		hist={'acc':[], 'loss':[], 'train_acc':[], 'best':copy.deepcopy(self), 'best_loss':100}
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		self.loss.set_batch_size(batch_size)
 		try:
@@ -243,13 +244,14 @@ class Model:
 				X, Y = X_[idx], Y_[idx]
 				self.init_grad_table()
 
+				self.latent_monitor[self.latent_counter]={'val':[], 'class':[]}
 
 				for i, (x, y) in enumerate(zip(X, Y)):
 					#print('\tData #%d'%i)
 					x = np.reshape(x, (1, x.shape[0]))
 					y = np.reshape(y, (1, y.shape[0]))
 					# X[data], Y[data]
-					self.forward_pass(x)
+					self.forward_pass(x, y)
 					self.backward_pass(self.forward(X), Y, i)
 
 				self.apply_final_grad()
@@ -258,8 +260,10 @@ class Model:
 
 				if (epoch+1)%record_every_n_epoch == 0 or epoch == 0:
 					acc, est = self.validation(X_val, Y_val)
+					acc_2, est_2 = self.validation(X_, Y_)
 					hist['acc'].append(acc)
-					hist['loss'].append(est)	
+					hist['loss'].append(est)
+					hist['train_acc'].append(acc_2)
 
 				if validate_every_n_epoch is not None and X_val is not None and Y_val is not None and (epoch+1)%validate_every_n_epoch == 0:
 					acc, est = self.validation(X_val, Y_val)
@@ -270,11 +274,11 @@ class Model:
 					if self.loss_type =='cross_entropy': print('  Epoch #%.7d, loss=%.5f, acc=%.3f'%(epoch+1, est, acc) + print_lr)
 					else: print('  Epoch #%.7d, loss=%14.12f, acc=%14.12f'%(epoch+1, est, acc, self.optimizer.get_lr()) + print_lr)
 					#input(self)
-					'''
+					
 					check_ = True
 					for i in range(1, 25):
 						try:
-							if hist['acc'][-i] > hist['acc'][-i-1]:# or hist['loss'][-i]<hist['loss'][-i-1]:
+							if hist['loss'][-i] < hist['loss'][-i-1]:# or hist['loss'][-i]<hist['loss'][-i-1]:
 								check_ = False
 								break
 						except:
@@ -284,7 +288,7 @@ class Model:
 					if check_: 
 						print('Broken!')
 						break
-					'''
+					
 
 				self.latent_counter += 1
 
