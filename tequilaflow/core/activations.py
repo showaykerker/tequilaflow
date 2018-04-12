@@ -12,20 +12,26 @@ class Relu(Activation):
 
 	def kernel(self, X_):
 		X_ret = copy.deepcopy(X_)
-		for i, v in enumerate(X_ret[0]):
-			if v<=0: X_ret[0][i] = 0
+		X_ret[X_ret<0] = 0
+		#print('In')
+		#print(X_)
+		#print('Out')
+		#print(ret1)
+		#input(X_ret)
 		return X_ret
 
 	def diff(self,X_):
-		ret = copy.deepcopy(X_)
-		for i, v in enumerate(ret[0]):
-			ret[0][i] = 0 if v < 0 else 1
-		return ret		
+		#ret = copy.deepcopy(X_)
+		#for i, v in enumerate(ret[0]):
+		#	ret[0][i] = 0 if v < 0 else 1
+		X_ret  = copy.deepcopy(X_)
+		X_ret[X_ret<0] = 0
+		X_ret[X_ret!=0] =  1
+		#ret2 = super().diff(X_, self.kernel)
+		return X_ret		
 
 	def forward(self, X_): 
-		self.before_ = X_
-		self.after_ = self.kernel(X_)
-		return self.after_
+		return self.kernel(X_)
 
 	def __str__(self): 
 		return super().__str__('ReLU')
@@ -39,14 +45,11 @@ class Linear(Activation):
 
 	def diff(self,X_):
 		ret = copy.deepcopy(X_)
-		for i, v in enumerate(ret[0]):
-			ret[0][i] = 1
+		ret.fill(1)
 		return ret	
 
 	def forward(self, X_): 
-		self.before_ = X_
-		self.after_ = self.kernel(X_)
-		return self.after_
+		return self.kernel(X_)
 
 	def __str__(self): 
 		return super().__str__('Linear')
@@ -56,15 +59,15 @@ class Softmax(Activation):
 		super().__init__(last_layer)
 
 	def kernel(self, X_): 
-		_X = X_[0]
-		X_ret = copy.deepcopy(X_)
-		divided_by = sum([math.exp(i) for i in _X])
-		for i, v in enumerate(X_ret[0]):
-			X_ret[0][i] = math.exp(v)/divided_by
+		X_ret = np.zeros(X.shape)
+		for i,row in enumerate(X):
+			exps = np.exp(row-row.max())
+			X_ret[i] = exps/np.sum(exps)
 		return X_ret
 
 	def diff(self,X_):
 		# https://en.wikipedia.org/wiki/Activation_function
+		'''
 		X_ret = self.kernel(X_)[0]
 		table = np.zeros( (X_ret.shape[0], X_ret.shape[0]) )
 		for i, v1 in enumerate(X_ret):
@@ -73,7 +76,8 @@ class Softmax(Activation):
 				else: k_delta = 0
 				# {\partialf_i_{x}}/{\partialx_j}
 				table[i][j] = X_ret[i] * (k_delta-X_ret[j])
-		return table
+		'''
+		return X_ #table
 
 	def forward(self, X_): 
 		self.before_ = X_
@@ -88,25 +92,12 @@ class Tanh(Activation):
 		super().__init__(last_layer)
 
 	def kernel(self, X_): 
-		s = X_.shape
-		X_ret = copy.deepcopy(X_)
-		_X = X_ret.flatten()
-		for i, v in enumerate(_X):
-			#print(_X)
-			_X[i] = math.tanh(v)
-			#input(_X)
-		X_ret = np.reshape(_X, s)
-		return X_ret
+		return np.tanh(X_)
 
 	def diff(self,X_):
-		ret = copy.deepcopy(X_)
-		for i, v in enumerate(ret[0]):
-			ret[0][i] = 1 - math.tanh(v)**2
-		return ret	
+		return 1 - self.kernel(X_)**2		
 
 	def forward(self, X_): 
-		#self.before_ = X_
-		#self.after_ = self.kernel(X_)
 		return self.kernel(X_)
 
 	def __str__(self): 
@@ -117,23 +108,20 @@ class Sigmoid(Activation):
 		super().__init__(last_layer)
 
 	def kernel(self, X_): 
-		_X = X_[0]
 		X_ret = copy.deepcopy(X_)
-		for i, v in enumerate(X_ret[0]):
-			X_ret[0][i] = 1/(1+math.exp(-v))
+		X_ret = np.clip(X_ret, -500, 500)
+		X_ret = 1/(1+np.exp(-X_ret))
+		
 		return X_ret
 
 	def diff(self,X_):
-		ret = copy.deepcopy(X_)
-		for i, v in enumerate(ret[0]):
-			f = 1/(1+math.exp(-v))
-			ret[0][i] = f * (1-f)
-		return ret	
+		ret1 = self.kernel(X_)*(1-self.kernel(X_))
+		#ret2 = super().diff(X_, self.kernel)
+		
+		return ret1
 
 	def forward(self, X_): 
-		self.before_ = X_
-		self.after_ = self.kernel(X_)
-		return self.after_
+		return self.kernel(X_)
 
 	def __str__(self): 
 		return super().__str__('Sigmoid')
@@ -143,22 +131,19 @@ class LeakyRelu(Activation):
 		super().__init__(last_layer)
 
 	def kernel(self, X_): 
-		_X = X_[0]
 		X_ret = copy.deepcopy(X_)
-		for i, v in enumerate(X_ret[0]):
-			X_ret[0][i] = v if v > 0 else 0.01 * v
+		X_ret[X_ret<0] *= 0.01
 		return X_ret
 
 	def diff(self,X_):
-		ret = copy.deepcopy(X_)
-		for i, v in enumerate(ret[0]):
-			ret[0][i] = 0.01 if v < 0 else 1
-		return ret	
+		X_ret = copy.deepcopy(X_)
+		X_ret[X_ret<0] = 0.01
+		X_ret[X_ret>0] = 1
+
+		return X_ret	
 
 	def forward(self, X_): 
-		self.before_ = X_
-		self.after_ = self.kernel(X_)
-		return self.after_
+		return self.kernel(X_)
 
 	def __str__(self): 
 		return super().__str__('LeakyReLU')

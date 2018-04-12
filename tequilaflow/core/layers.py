@@ -62,8 +62,13 @@ class Activation(layer):
 	def kernel(self, X_):
 		raise NotImplementedError()
 
-	def diff(self, X_):
-		raise NotImplementedError()
+	def diff(self, X_, kernel):
+		d = 1e-12
+		ret = copy.deepcopy(X_)
+		x_a = kernel(ret+d)
+		x_m = kernel(ret-d)
+		ret = (x_a-x_m)/(d*2)
+		return ret
 
 	def forward(self, X_): 
 		raise NotImplementedError()

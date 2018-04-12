@@ -108,7 +108,8 @@ class layer:
 					
 					import math
 					node.grad[0][i] = next_node.value *    node.value *   next_node.grad[0][0]
-					if next_node.grad[0][0] == math.nan:
+
+					if next_node.grad[0][0] == np.nan:
 						print('\tnode.grad[0][i]=',node.grad[0][i])
 						print('\tnext_node.value=',next_node.value)
 						print('\tnode.value=',node.value)
