@@ -67,13 +67,49 @@ def get_latent_data(hist):
 			if D_3: C2_L[2].append(z)
 
 	return C1_10, C2_10, C1_m, C2_m, C1_L, C2_L, last, mid
+
+def get_data():
+	data = loadmat('spam_data.mat')
+	#print(data)
+	#print(data.keys())
+	
+	X_train, Y_train = data['train_x'], data['train_y']
+	X_test, Y_test = data['test_x'], data['test_y']
+	randomize = np.arange(len(X_train))
+	np.random.shuffle(randomize)
+	X_train = X_train[randomize]
+	Y_train = Y_train[randomize]
+
+	return X_train, Y_train, X_test, Y_test
+
+def get_model():
+	a = Input(n_input=40, n_output=36, kernel_initializer='Gaus', kernel_mean=0.0, kernel_std=0.5, bias_initializer='Ones')
+	a = Linear(a)
+	a = Dense(36, a, kernel_initializer='Gaus', kernel_mean=0., kernel_std=0.1, bias_initializer='Ones')
+	a = Relu(a)
+	if D_3:
+		a = Dense(3, a, kernel_initializer='Gaus', kernel_mean=0., kernel_std=0.1, bias_initializer='Ones')
+	else: 	
+		a = Dense(2, a, kernel_initializer='Gaus', bias_initializer='Gaus'	)
+	a = Linear(a)
+	a = Dense(2, a, kernel_initializer='Gaus', kernel_mean=0, kernel_std=0.3, bias_initializer='Ones')
+	a = Linear(a)
+	a = Softmax(a)
+	model = Model(a)
+	model.compile(optimizer='SGD', lr=0.000096, decay_rate=0.9999996 , loss='cross_entropy')
+	return model
+
+
+
 if __name__ == '__main__':
 	X_train, Y_train, X_test, Y_test = get_data()
 	X_train += 0.1
 	X_test += 0.1
 	model = get_model()
-	hist = model.update(X_train, Y_train, batch_size=24, trainig_epoch=3000, 
-				X_val=X_test, Y_val=Y_test, validate_every_n_epoch=50, record_every_n_epoch=5, latenet=2)
+
+
+	hist = model.update(X_train, Y_train, batch_size=24, trainig_epoch=30000, 
+				X_val=X_test, Y_val=Y_test, validate_every_n_epoch=20, record_every_n_epoch=5, latenet=2)
 
 
 	

@@ -9,6 +9,8 @@ from sklearn import preprocessing
 import matplotlib.pyplot as plt
 import copy
 
+
+
 cname = ['Relative Compactness', 'Surface Area', 'Wall Area', 'Roof Area', 
 		'Overall Height', 'Orientation', 'Glazing Area', 'Glazing Area Distribution']
 
