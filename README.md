@@ -1,2 +1,1 @@
-This is a hand-crafted DNN project.
-Assignment of DL course in NCTU, Taiwan.
+This is an assignment of DL course in NCTU, Taiwan.
