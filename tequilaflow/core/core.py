@@ -189,7 +189,7 @@ class Model:
 				#input(vec_now[0])
 			vec_now = layer.forward(vec_now)
 			#input(vec_now[0])
-			if layer == self.layers[-2]:
+			if layer == self.layers[-4]:
 				self.latent_monitor[self.latent_counter]['val'].append(tuple([n for n in vec_now[0]]))
 
 			#print(vec_now)
@@ -232,7 +232,7 @@ class Model:
 
 
 	# Update Weights using Back Propagation
-	def update(self, X_, Y_, batch_size=4, trainig_epoch=80, X_val=None, Y_val=None, validate_every_n_epoch=None, record_every_n_epoch=100):
+	def update(self, X_, Y_, batch_size=4, trainig_epoch=80, X_val=None, Y_val=None, validate_every_n_epoch=None, record_every_n_epoch=100, latenet=2):
 		hist={'acc':[], 'loss':[], 'train_acc':[], 'best':copy.deepcopy(self), 'best_loss':100}
 		if not self.compiled: raise RuntimeError('Model Not Compiled.')
 		self.loss.set_batch_size(batch_size)
@@ -291,7 +291,7 @@ class Model:
 					
 
 				self.latent_counter += 1
-
+		#try: pass
 		except KeyboardInterrupt:
 			print('\nKeyboardInterrupt!')
 		except Exception as ex:
