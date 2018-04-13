@@ -72,11 +72,26 @@ class Softmax(Output):
 		# https://stats.stackexchange.com/questions/235528/backpropagation-with-softmax-cross-entropy
 		# https://en.wikipedia.org/wiki/Activation_function
 		
-		d = 1e-12
-		X_ret = copy.deepcopy(X_)
-		X_a = self.kernel(X_ret+d)
-		X_m = self.kernel(X_ret-d)
-		return (X_a-X_m)/(2*d)
+		d = 1e-6
+		ret = []
+		X_cp = copy.deepcopy(X_)
+		X_mod = copy.deepcopy(X_)
+
+		for i in range(X_.shape[1]):
+			X_a = copy.deepcopy(X_)
+			X_m = copy.deepcopy(X_)
+			
+			X_a[0][:][i] += d
+			X_m[0][:][i] -= d
+
+	
+			v = ((self.kernel(X_a)-self.kernel(X_m))/2/d)[0][0]
+
+			ret.append(v)
+
+		ret = np.array([ret])
+		#input(ret)
+		return ret
 
 	def forward(self, X_): 
 		return self.kernel(X_)
